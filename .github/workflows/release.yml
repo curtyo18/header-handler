@@ -58,4 +58,10 @@ jobs:
           tag="${GITHUB_REF_NAME}"
           name="${GITHUB_REPOSITORY##*/}"
           ver="$(node -p "require('./package.json').version")"
-          gh release create "$tag" "${name}-${ver}.zip" .output/*-chrome.zip --generate-notes --clobber
+          # Idempotent: create the release if it doesn't exist yet, otherwise just
+          # re-upload the assets. (--clobber is a `release upload` flag, not `create`.)
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "${name}-${ver}.zip" .output/*-chrome.zip --clobber
+          else
+            gh release create "$tag" "${name}-${ver}.zip" .output/*-chrome.zip --generate-notes
+          fi
