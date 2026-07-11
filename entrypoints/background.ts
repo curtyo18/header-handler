@@ -21,13 +21,6 @@ export default defineBackground(() => {
   chrome.runtime.onStartup.addListener(recompile);
   recompile();
 
-  // Open the side panel from the popup button.
-  chrome.runtime.onMessage.addListener((msg, sender) => {
-    if (msg?.type === "open-panel" && sender.tab?.windowId != null) {
-      chrome.sidePanel.open({ windowId: sender.tab.windowId });
-    }
-  });
-
   // Live-log reconstruction (see ADR 0001): observe requests, re-run the matcher.
   function matchedRules(cfg: Config, url: string): string[] {
     if (!cfg.masterEnabled) return [];

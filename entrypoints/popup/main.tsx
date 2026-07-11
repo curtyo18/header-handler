@@ -102,7 +102,11 @@ function App() {
         <button
           type="button"
           class="btn btn-outline-accent btn-full"
-          onClick={() => chrome.runtime.sendMessage({ type: "open-panel" })}
+          onClick={async () => {
+            const win = await chrome.windows.getCurrent();
+            if (win.id != null) await chrome.sidePanel.open({ windowId: win.id });
+            window.close();
+          }}
         >
           <span class="icon">📋</span> Open live log
         </button>
