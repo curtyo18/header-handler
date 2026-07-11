@@ -42,6 +42,13 @@ describe("compileRules", () => {
     expect(rules.find((r) => r.priority === 1)).toBeTruthy();
     expect(rules.find((r) => r.priority === 2)).toBeTruthy();
   });
+  it("skips a rule whose effective matcher has an empty value instead of emitting an invalid DNR condition", () => {
+    const c = structuredClone(cfg);
+    c.profiles[0].rules[0].matcher = { mode: "contains", value: "" };
+    const rules = compileRules(c);
+    expect(rules.find((r) => r.action.requestHeaders?.[0].header === "x-a")).toBeUndefined();
+    expect(rules).toHaveLength(1); // only the Cookie-remove rule remains
+  });
 });
 
 describe("diffRules", () => {
@@ -51,5 +58,23 @@ describe("diffRules", () => {
     const { addRules, removeRuleIds } = diffRules(current, next);
     expect(removeRuleIds).toEqual([1]);
     expect(addRules.map((r) => r.id)).toEqual([3]);
+  });
+  it("re-adds a rule whose id is reused by different content (position-derived ids can collide)", () => {
+    const current = [
+      { id: 1, condition: { urlFilter: "old.com" } },
+    ] as chrome.declarativeNetRequest.Rule[];
+    const next = [
+      { id: 1, condition: { urlFilter: "new.com" } },
+    ] as chrome.declarativeNetRequest.Rule[];
+    const { addRules, removeRuleIds } = diffRules(current, next);
+    expect(removeRuleIds).toEqual([1]);
+    expect(addRules).toEqual(next);
+  });
+  it("leaves an unchanged same-id rule alone", () => {
+    const current = [{ id: 1, condition: { urlFilter: "x.com" } }] as chrome.declarativeNetRequest.Rule[];
+    const next = [{ id: 1, condition: { urlFilter: "x.com" } }] as chrome.declarativeNetRequest.Rule[];
+    const { addRules, removeRuleIds } = diffRules(current, next);
+    expect(addRules).toEqual([]);
+    expect(removeRuleIds).toEqual([]);
   });
 });

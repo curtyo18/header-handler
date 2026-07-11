@@ -16,6 +16,10 @@ export function matcherToDnrCondition(m: Matcher): chrome.declarativeNetRequest.
 }
 
 export function evaluateMatcher(m: Matcher, url: string): boolean {
+  // An empty matcher value can't compile to a valid DNR condition (compileRules skips
+  // it), so it must never match here either — otherwise contains/starts/ends/regex
+  // degrade to "match everything" and the live log lies.
+  if (m.mode !== "domain" && m.value.trim() === "") return false;
   switch (m.mode) {
     case "contains": return url.includes(m.value);
     case "starts":   return url.startsWith(m.value);
