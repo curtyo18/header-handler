@@ -24,6 +24,23 @@ describe("HeaderRow override toggle", () => {
     expect(current.matcher).toBeUndefined();
   });
 
+  it("switching the mode dropdown without ever typing a value still clears on close", () => {
+    const rule = baseRule();
+    let current = rule;
+    const { rerender, container } = render(<HeaderRow rule={current} onChange={(next) => (current = next)} onDelete={() => {}} />);
+
+    fireEvent.click(screen.getByTitle("Override match"));
+    rerender(<HeaderRow rule={current} onChange={(next) => (current = next)} onDelete={() => {}} />);
+
+    fireEvent.change(container.querySelector(".matcher-mode")!, { target: { value: "domain" } });
+    expect(current.matcher).toEqual({ mode: "domain", value: "" });
+    rerender(<HeaderRow rule={current} onChange={(next) => (current = next)} onDelete={() => {}} />);
+
+    fireEvent.click(screen.getByTitle("Override match"));
+
+    expect(current.matcher).toBeUndefined();
+  });
+
   it("closing the panel after typing a value keeps the matcher", () => {
     const rule = baseRule();
     let current = rule;

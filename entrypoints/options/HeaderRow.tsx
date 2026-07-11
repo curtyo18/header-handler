@@ -107,7 +107,7 @@ export function HeaderRow({
   function toggleOverride() {
     if (overrideOpen) {
       setOverrideOpen(false);
-      if (rule.matcher && rule.matcher.mode === "contains" && rule.matcher.value === "") {
+      if (rule.matcher && rule.matcher.value === "") {
         const { matcher: _drop, ...rest } = rule;
         onChange(rest);
       }
