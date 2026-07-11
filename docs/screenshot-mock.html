@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Header Handler — UI mock</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0b0b0c;
+    --surface: #141417;
+    --surface-2: #1b1b1f;
+    --border: #2a2a2e;
+    --text: #e7e7e9;
+    --muted: #8a8a90;
+    --accent: #6ea8fe;
+    --accent-dim: #24344f;
+    --success: #5fd08a;
+    --danger: #f2777a;
+    --method: #c99bff;
+    --radius: 10px;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: radial-gradient(1200px 700px at 70% -10%, #16161b 0%, var(--bg) 55%);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+  /* 1280x800 store-shot frame */
+  .frame {
+    width: 1280px; height: 800px; margin: 0 auto; position: relative;
+    display: grid; grid-template-columns: 300px 1fr; gap: 22px; padding: 26px;
+  }
+  .col-left { display: flex; flex-direction: column; gap: 22px; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; overflow: hidden;
+    box-shadow: 0 12px 40px rgba(0,0,0,.45);
+  }
+  .card-title {
+    font-size: 11px; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--muted); padding: 9px 14px; border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); display: inline-block; }
+
+  /* ---------- shared bits ---------- */
+  .switch { width: 40px; height: 22px; border-radius: 12px; background: var(--surface-2);
+    border: 1px solid var(--border); position: relative; flex: none; transition: .15s; }
+  .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px;
+    border-radius: 50%; background: var(--muted); transition: .15s; }
+  .switch.on { background: var(--accent-dim); border-color: var(--accent); }
+  .switch.on::after { background: var(--accent); left: 20px; }
+  .chip { font-size: 11px; padding: 2px 7px; border-radius: 6px; background: var(--accent-dim);
+    color: var(--accent); border: 1px solid #2f4870; white-space: nowrap; }
+  .pill { font-size: 10px; color: var(--muted); background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: 999px; padding: 1px 7px; }
+
+  /* ---------- popup ---------- */
+  .popup { width: 300px; }
+  .popup .head { display: flex; align-items: center; justify-content: space-between;
+    padding: 14px; border-bottom: 1px solid var(--border); }
+  .popup .brand { font-weight: 650; font-size: 14px; display: flex; align-items: center; gap: 9px; }
+  .logo { width: 22px; height: 22px; border-radius: 6px; background: linear-gradient(135deg, var(--accent), #9b7cff);
+    color: #06101f; font-weight: 800; font-size: 12px; display: grid; place-items: center; }
+  .master { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+  .master .val { color: var(--accent); font-weight: 600; }
+  .prow { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-bottom: 1px solid #202024; }
+  .prow:last-child { border-bottom: 0; }
+  .prow .name { flex: 1; font-size: 13px; }
+  .prow.off .name { color: var(--muted); }
+  .prow .cnt { font-size: 11px; color: var(--muted); background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: 6px; padding: 1px 7px; }
+  .popup .foot { display: flex; gap: 8px; padding: 12px 14px; border-top: 1px solid var(--border); }
+  .btn { flex: 1; font-size: 12px; padding: 8px 10px; border-radius: 8px; cursor: pointer;
+    background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+  .btn.primary { background: var(--accent-dim); border-color: #2f4870; color: var(--accent); }
+
+  /* ---------- side panel (in left column, under popup) ---------- */
+  .panel { flex: 1; display: flex; flex-direction: column; }
+  .panel .plist { padding: 8px; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
+  .logrow { background: var(--surface-2); border: 1px solid var(--border); border-radius: 9px; padding: 9px 10px; }
+  .logrow .l1 { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .method { font-size: 10px; font-weight: 700; color: var(--method); background: #241a33;
+    border: 1px solid #3a2a52; border-radius: 5px; padding: 1px 6px; }
+  .url { flex: 1; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .url b { color: var(--text); font-weight: 600; }
+  .time { font-size: 10px; color: var(--muted); }
+  .l2 { display: flex; gap: 6px; margin-top: 7px; flex-wrap: wrap; }
+  .hdrs { margin-top: 8px; border-top: 1px dashed var(--border); padding-top: 7px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 10.5px; line-height: 1.65; }
+  .hdrs .k { color: var(--muted); }
+  .hdrs .hit .k { color: var(--accent); }
+  .hdrs .hit { color: var(--text); }
+  .hdrs .muted { color: #5c5c63; }
+
+  /* ---------- options ---------- */
+  .options { height: 100%; display: flex; flex-direction: column; }
+  .opt-top { display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px; border-bottom: 1px solid var(--border); }
+  .opt-top .brand { font-weight: 650; font-size: 15px; display: flex; align-items: center; gap: 10px; }
+  .opt-actions { display: flex; gap: 8px; }
+  .opt-body { flex: 1; display: grid; grid-template-columns: 220px 1fr; min-height: 0; }
+  .plist-col { border-right: 1px solid var(--border); padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+  .pitem { display: flex; align-items: center; gap: 9px; padding: 9px 11px; border-radius: 8px; font-size: 13px; cursor: pointer; }
+  .pitem.active { background: var(--surface-2); border: 1px solid var(--border); }
+  .pitem .d { width: 6px; height: 6px; border-radius: 50%; background: var(--success); flex: none; }
+  .pitem .d.off { background: #4a4a50; }
+  .newp { color: var(--accent); font-size: 12.5px; padding: 9px 11px; cursor: pointer; }
+  .editor { padding: 18px 22px; overflow: hidden; }
+  .field-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  input.txt, select.sel {
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--text);
+    border-radius: 8px; padding: 8px 10px; font-size: 13px; font-family: inherit;
+  }
+  input.txt:focus, select.sel:focus { outline: none; border-color: var(--accent); }
+  .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin-bottom: 7px; }
+  .matcher { display: flex; gap: 10px; align-items: center; }
+  .matcher .sel { min-width: 130px; }
+  .matcher .txt { flex: 1; }
+  .hint { font-size: 11px; color: var(--muted); margin-top: 6px; font-family: ui-monospace, Menlo, monospace; }
+  .section { margin-top: 22px; }
+  .htable { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-top: 10px; }
+  .hhead, .hrow { display: grid; grid-template-columns: 34px 92px 1.1fr 1.4fr 96px 30px; align-items: center; gap: 10px; padding: 9px 12px; }
+  .hhead { background: var(--surface-2); font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .hrow { border-top: 1px solid var(--border); font-size: 12.5px; }
+  .hrow input.cell { width: 100%; background: transparent; border: 1px solid transparent; color: var(--text);
+    padding: 5px 7px; border-radius: 6px; font-size: 12.5px; font-family: ui-monospace, Menlo, monospace; }
+  .hrow input.cell:hover { border-color: var(--border); }
+  .hrow input.cell.disabled { color: #55555c; }
+  .miniop { font-size: 12px; color: var(--accent); background: var(--accent-dim); border: 1px solid #2f4870;
+    border-radius: 6px; padding: 4px 8px; text-align: center; }
+  .override { font-size: 11px; color: var(--muted); }
+  .del { color: var(--danger); text-align: center; cursor: pointer; }
+  .addh { font-size: 12.5px; color: var(--accent); padding: 10px 12px; cursor: pointer; border-top: 1px solid var(--border); }
+  .cb { width: 15px; height: 15px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface-2);
+    display: grid; place-items: center; }
+  .cb.on { background: var(--accent-dim); border-color: var(--accent); }
+  .cb.on::after { content: "✓"; color: var(--accent); font-size: 10px; }
+
+  .caption { position: absolute; bottom: 8px; left: 0; right: 0; text-align: center; font-size: 11px; color: #4d4d54; }
+</style>
+</head>
+<body>
+  <div class="frame">
+    <!-- LEFT COLUMN: popup + side panel -->
+    <div class="col-left">
+      <!-- POPUP -->
+      <div class="card popup">
+        <div class="card-title">Popup <span class="pill">toolbar</span></div>
+        <div class="head">
+          <div class="brand"><span class="logo">H</span> Header Handler</div>
+          <div class="master"><span class="val">On</span><div class="switch on"></div></div>
+        </div>
+        <div class="prow"><div class="switch on"></div><span class="name">Local dev auth</span><span class="cnt">3</span></div>
+        <div class="prow"><div class="switch on"></div><span class="name">Debug tracing</span><span class="cnt">2</span></div>
+        <div class="prow off"><div class="switch"></div><span class="name">Staging CORS</span><span class="cnt">1</span></div>
+        <div class="foot">
+          <div class="btn primary">Live log</div>
+          <div class="btn">⚙ Options</div>
+        </div>
+      </div>
+
+      <!-- SIDE PANEL -->
+      <div class="card panel">
+        <div class="card-title">Live log <span class="pill">side panel · session only</span></div>
+        <div class="plist">
+          <div class="logrow">
+            <div class="l1"><span class="method">GET</span><span class="url"><b>api.example.com</b>/v1/users</span><span class="time">now</span></div>
+            <div class="l2"><span class="chip">Local dev auth › Authorization</span></div>
+            <div class="hdrs">
+              <div class="hit"><span class="k">authorization:</span> Bearer eyJ…dev</div>
+              <div class="muted"><span class="k">accept:</span> application/json</div>
+              <div class="muted"><span class="k">user-agent:</span> Mozilla/5.0…</div>
+            </div>
+          </div>
+          <div class="logrow">
+            <div class="l1"><span class="method">POST</span><span class="url"><b>api.example.com</b>/v1/orders</span><span class="time">2s</span></div>
+            <div class="l2"><span class="chip">Local dev auth › Authorization</span><span class="chip">Debug tracing › X-Debug</span></div>
+          </div>
+          <div class="logrow">
+            <div class="l1"><span class="method">GET</span><span class="url"><b>httpbin.org</b>/headers</span><span class="time">9s</span></div>
+            <div class="l2"><span class="chip">Debug tracing › X-Debug</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: OPTIONS -->
+    <div class="card options">
+      <div class="opt-top">
+        <div class="brand"><span class="logo">H</span> Header Handler <span class="pill">Options</span></div>
+        <div class="opt-actions">
+          <div class="btn" style="flex:none">Import</div>
+          <div class="btn primary" style="flex:none">Export ▾</div>
+        </div>
+      </div>
+      <div class="opt-body">
+        <div class="plist-col">
+          <div class="pitem active"><span class="d"></span>Local dev auth</div>
+          <div class="pitem"><span class="d"></span>Debug tracing</div>
+          <div class="pitem"><span class="d off"></span>Staging CORS</div>
+          <div class="newp">＋ New profile</div>
+        </div>
+        <div class="editor">
+          <div class="field-row">
+            <div style="flex:1">
+              <div class="lbl">Profile name</div>
+              <input class="txt" style="width:260px" value="Local dev auth" />
+            </div>
+            <div style="text-align:right">
+              <div class="lbl">Enabled</div>
+              <div class="switch on"></div>
+            </div>
+          </div>
+
+          <div>
+            <div class="lbl">Profile matcher</div>
+            <div class="matcher">
+              <select class="sel"><option>Domain ▾</option></select>
+              <input class="txt" value="api.example.com" />
+            </div>
+            <div class="hint">matches api.example.com and its subdomains</div>
+          </div>
+
+          <div class="section">
+            <div class="lbl">Header rules</div>
+            <div class="htable">
+              <div class="hhead"><div>On</div><div>Op</div><div>Header</div><div>Value</div><div>Match</div><div></div></div>
+              <div class="hrow">
+                <div class="cb on"></div>
+                <div class="miniop">Set</div>
+                <input class="cell" value="Authorization" />
+                <input class="cell" value="Bearer eyJhbGc…dev" />
+                <div class="override">profile</div>
+                <div class="del">✕</div>
+              </div>
+              <div class="hrow">
+                <div class="cb on"></div>
+                <div class="miniop">Set</div>
+                <input class="cell" value="X-Env" />
+                <input class="cell" value="local" />
+                <div class="override" style="color:var(--accent)">override ▾</div>
+                <div class="del">✕</div>
+              </div>
+              <div class="hrow">
+                <div class="cb on"></div>
+                <div class="miniop" style="color:var(--danger);background:#2a1a1c;border-color:#4a2a2e">Remove</div>
+                <input class="cell" value="Cookie" />
+                <input class="cell disabled" value="— not used for Remove —" />
+                <div class="override">profile</div>
+                <div class="del">✕</div>
+              </div>
+              <div class="addh">＋ Add header</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="caption">Header Handler — dark-only mock · popup + side-panel live log + options editor · tokens: bg #0b0b0c / surface #141417 / accent #6ea8fe</div>
+  </div>
+</body>
+</html>
