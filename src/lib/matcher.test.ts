@@ -56,4 +56,11 @@ describe("evaluateMatcher", () => {
   it("invalid regex is a non-match, never throws", () => {
     expect(evaluateMatcher({ mode: "regex", value: "(" }, u)).toBe(false);
   });
+  it("empty value never matches (mirrors compileRules skipping an invalid DNR condition)", () => {
+    expect(evaluateMatcher({ mode: "contains", value: "" }, u)).toBe(false);
+    expect(evaluateMatcher({ mode: "starts", value: "" }, u)).toBe(false);
+    expect(evaluateMatcher({ mode: "ends", value: "" }, u)).toBe(false);
+    expect(evaluateMatcher({ mode: "regex", value: "" }, u)).toBe(false);
+    expect(evaluateMatcher({ mode: "contains", value: "   " }, u)).toBe(false);
+  });
 });

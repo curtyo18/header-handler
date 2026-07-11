@@ -125,7 +125,6 @@ function App() {
             Clear
           </button>
         </div>
-        <div class="panel-note">Session only · not persisted</div>
       </header>
 
       {log && log.length === 0 ? (

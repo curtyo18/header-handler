@@ -69,12 +69,6 @@ button {
   letter-spacing: -0.01em;
 }
 
-.panel-note {
-  font-size: 10.5px;
-  color: var(--muted);
-  margin-top: 5px;
-}
-
 .btn-clear {
   height: 26px;
   padding: 0 11px;

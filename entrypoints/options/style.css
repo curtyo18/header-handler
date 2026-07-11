@@ -602,7 +602,7 @@ textarea.value-input {
   color: transparent;
   caret-color: var(--text);
   border: none;
-  resize: vertical;
+  resize: none;
   display: block;
 }
 
