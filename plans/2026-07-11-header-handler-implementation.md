@@ -777,3 +777,16 @@ Create `.github/workflows/release.yml` per the chrome-extension standard: trigge
 - **Type consistency:** `Config/Profile/HeaderRule/Matcher/MatchMode/HeaderOp` defined once in T3 and imported everywhere; `LogEntry`/`matchedRuleIds` shaped as `"profileId:ruleId"` in T7 and produced identically in T8 and consumed in T11.
 - **Deviation from file map:** `src/lib/ids.ts` dropped — T6 uses deterministic positional integer ids instead of a persisted uuid↔int table (simpler, stable across restarts).
 - **Header casing:** DNR expects lowercase header names in `modifyHeaders`; T6 lowercases. Log display (T11) shows names as observed.
+
+---
+
+## Design-handoff revisions (2026-07-11)
+
+The real Claude Design mockup landed in `design_handoff_header_handler/` (`Header Handler Mock.dc.html` + `README.md`). That handoff — not `docs/screenshot-mock.html` (now a labeled fallback) — is the visual source of truth for UI Tasks 9–11. Changes it drives:
+
+- **Tokens:** cards use `--surface-2: #0f0f12` (inside surfaces); soft borders `#17171b`/`#22222a`/`#1c1c21`; accent-tint bg `#1a2537`, accent border `#33465f`. Full list in the handoff README "Design Tokens". Control sizes and radii are specified there — match them.
+- **New feature — JSON header values (Task 10):** value cells auto-detect JSON → show a `{ } JSON` badge + Format button, pretty-print with light syntax coloring, footer line `✓ valid JSON · N bytes · sent minified → one line`, and **minify to a single line on save** (headers can't hold newlines); invalid JSON blocks save like the regex error; show a byte count and warn near ~8–16 KB. Backed by the new pure module `src/lib/json-value.ts` (`isLikelyJson`, `validateJson`, `formatJson`, `minifyJson`, `byteLength`) — implemented + unit-tested (10 tests). `HeaderRule.value` stays a plain string (stored minified).
+- **Naming reconciliation (do NOT rename):** the handoff's state notes say `startsWith`/`endsWith` and `override?`. The codebase is authoritative and already built/tested: keep `MatchMode` = `"contains"|"exact"|"starts"|"ends"|"domain"|"regex"` and the per-rule field `HeaderRule.matcher?`. Use the handoff only for *labels* ("Starts with", "Override match"), never to rename types.
+- **Reused as-is:** `storage.ts` `LogEntry` and the background observer are unchanged — the side panel derives matched/added-header highlighting by resolving `matchedRuleIds` (`"profileId:ruleId"`) against the current config; added-header names come from each matched rule's `name`.
+- **Matcher example hints (Task 10):** the monospace hint under a matcher changes with the mode (Contains → `api.example.com`, Regex → `^https://.*\.dev/`, Domain → "matches host + subdomains", etc.).
+- **States to implement (not in composite):** popup empty state ("Create a profile"), side-panel empty state ("No matched requests yet — enable a profile and browse"), import modal (paste box, per-collision Overwrite/Cancel + "apply to all" for global bundles), method-chip colors (GET success / POST accent / DELETE danger / PUT·PATCH accent-amber).
