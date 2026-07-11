@@ -56,6 +56,13 @@ describe("compileRules", () => {
     expect(rules.find((r) => r.action.requestHeaders?.[0].header === "x-a")).toBeUndefined();
     expect(rules).toHaveLength(1);
   });
+  it("skips a rule with a blank header name (DNR rejects an empty header field)", () => {
+    const c = structuredClone(cfg);
+    c.profiles[0].rules[0].name = "  ";
+    const rules = compileRules(c);
+    expect(rules.find((r) => r.action.requestHeaders?.[0].header === "x-a")).toBeUndefined();
+    expect(rules).toHaveLength(1);
+  });
 });
 
 describe("diffRules", () => {

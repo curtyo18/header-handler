@@ -19,6 +19,7 @@ export function compileRules(cfg: Config): chrome.declarativeNetRequest.Rule[] {
     if (!profile.enabled) return;
     for (const rule of profile.rules) {
       if (!rule.enabled) continue;
+      if (rule.name.trim() === "") continue;
       const matcher = rule.matcher ?? profile.matcher;
       if (hasEmptyValue(matcher)) continue;
       const cond = matcherToDnrCondition(matcher);
