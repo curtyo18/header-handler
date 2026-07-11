@@ -1,0 +1,268 @@
+:root {
+  color-scheme: dark;
+  --bg: #0b0b0c;
+  --surface: #141417;
+  --surface-2: #0f0f12;
+  --border: #2a2a2e;
+  --border-soft: #17171b;
+  --border-soft-2: #22222a;
+  --border-soft-3: #1c1c21;
+  --text: #e7e7e9;
+  --muted: #8a8a90;
+  --muted-2: #6a6a70;
+  --muted-3: #5a5a62;
+  --accent: #6ea8fe;
+  --accent-tint: #1a2537;
+  --accent-border: #33465f;
+  --success: #5fd08a;
+  --danger: #f2777a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  width: 360px;
+  height: 420px;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  overflow: hidden;
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+}
+
+button {
+  font-family: inherit;
+}
+
+.popup {
+  display: flex;
+  flex-direction: column;
+  width: 360px;
+  height: 420px;
+}
+
+.popup-header {
+  padding: 14px 14px 12px;
+  border-bottom: 1px solid var(--border-soft);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: none;
+}
+
+.popup-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.app-icon {
+  border-radius: 7px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 0 5px;
+  flex: none;
+}
+
+.app-icon .bar {
+  height: 2px;
+  width: 85%;
+  background: var(--muted-3);
+  border-radius: 2px;
+}
+
+.app-icon .bar:nth-child(2) {
+  width: 70%;
+}
+
+.app-icon .bar-accent {
+  background: var(--accent);
+  width: 100%;
+}
+
+.popup-title {
+  font-size: 13.5px;
+  font-weight: 650;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+.popup-subtitle {
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.switch {
+  position: relative;
+  flex: none;
+  border-radius: 999px;
+  border: none;
+  background: var(--border);
+  cursor: pointer;
+  padding: 0;
+  transition: background 140ms ease, box-shadow 140ms ease;
+}
+
+.switch .knob {
+  position: absolute;
+  border-radius: 50%;
+  background: var(--muted-2);
+  transition: left 140ms ease, background 140ms ease;
+}
+
+.switch-master {
+  width: 46px;
+  height: 26px;
+}
+
+.switch-master .knob {
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+}
+
+.switch-master.on {
+  background: var(--accent);
+  box-shadow: 0 0 0 1px rgba(110, 168, 254, 0.4), 0 0 16px -2px rgba(110, 168, 254, 0.5);
+}
+
+.switch-master.on .knob {
+  left: 23px;
+  background: var(--bg);
+}
+
+.switch-list {
+  width: 34px;
+  height: 20px;
+}
+
+.switch-list .knob {
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+}
+
+.switch-list.on {
+  background: var(--accent);
+}
+
+.switch-list.on .knob {
+  left: 16px;
+  background: var(--bg);
+}
+
+.profile-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.profile-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft-2);
+  border-radius: 9px;
+  transition: opacity 140ms ease;
+}
+
+.profile-row.dimmed {
+  opacity: 0.72;
+}
+
+.profile-name {
+  font-size: 12.5px;
+  font-weight: 550;
+  color: var(--text);
+}
+
+.profile-count {
+  font-size: 10.5px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.popup-footer {
+  padding: 10px 12px;
+  border-top: 1px solid var(--border-soft);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.btn {
+  height: 32px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 550;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.btn-full {
+  flex: 1;
+}
+
+.btn-outline-accent {
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
+.btn-icon {
+  width: 32px;
+  padding: 0;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.btn-accent {
+  background: var(--accent-tint);
+  border-color: var(--accent-border);
+  color: var(--accent);
+  padding: 0 14px;
+}
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.empty-line {
+  font-size: 12px;
+  color: var(--muted);
+}
