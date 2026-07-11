@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Header Handler — Privacy Policy</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0b0b0c;
+    --surface: #141417;
+    --border: #2a2a2e;
+    --text: #e7e7e9;
+    --muted: #8a8a90;
+    --accent: #6ea8fe;
+    --success: #5fd08a;
+    --danger: #f2777a;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.6;
+  }
+  .wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+  h1 {
+    font-size: 28px;
+    margin: 0 0 4px;
+  }
+  .updated {
+    color: var(--muted);
+    font-size: 13px;
+    margin: 0 0 36px;
+  }
+  h2 {
+    font-size: 17px;
+    margin: 36px 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  p, li {
+    color: var(--text);
+    font-size: 15px;
+  }
+  ul {
+    padding-left: 22px;
+  }
+  li + li {
+    margin-top: 8px;
+  }
+  code {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 13px;
+    color: var(--accent);
+  }
+  .callout {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 16px 0;
+  }
+  .callout.warn {
+    border-left-color: var(--danger);
+  }
+  .callout.good {
+    border-left-color: var(--success);
+  }
+  .callout p:first-child { margin-top: 0; }
+  .callout p:last-child { margin-bottom: 0; }
+  footer {
+    margin-top: 48px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Header Handler — Privacy Policy</h1>
+  <p class="updated">Last updated: 2026-07-11</p>
+
+  <p>
+    Header Handler is a Chrome extension that lets you add, overwrite, and remove
+    request headers using rules you define. This page explains, in plain English,
+    what data the extension touches, where it lives, and where it never goes.
+  </p>
+
+  <h2>What is stored, and where</h2>
+  <p>
+    Your configuration — profiles and the header rules inside them — is stored using
+    <code>chrome.storage.sync</code>. This is Chrome's built-in synced storage: if
+    you're signed into Chrome, this configuration will sync across your Chrome
+    instances on other devices, the same way bookmarks or extension settings do.
+    This data is managed entirely by Chrome; Header Handler does not run its own
+    server and cannot see this data outside your browser.
+  </p>
+
+  <h2>The live log and sensitive headers</h2>
+  <div class="callout warn">
+    <p>
+      The live log observes request headers for requests that match your enabled
+      rules — and this <strong>can include sensitive headers</strong>, such as
+      <code>Authorization</code> and <code>Cookie</code>, if your rules cause a
+      request to be observed.
+    </p>
+    <p>
+      Header Handler only looks at headers on requests that match a rule you turned
+      on. It does not inspect or log traffic outside of that matched set.
+    </p>
+  </div>
+  <p>
+    Anything the live log captures is held only in <code>chrome.storage.session</code>
+    — Chrome's in-memory, session-scoped storage. Concretely, that means:
+  </p>
+  <ul>
+    <li>Observed headers live in memory for the duration of your browser session.</li>
+    <li>They are <strong>never written to disk</strong>.</li>
+    <li>They are <strong>never transmitted anywhere</strong> — not to a server, not to any third party, not anywhere off your device.</li>
+    <li>They are cleared automatically when the browser closes, and can be cleared manually at any time with the Clear button in the live log.</li>
+  </ul>
+
+  <h2>What Header Handler does not do</h2>
+  <div class="callout good">
+    <ul>
+      <li>No analytics.</li>
+      <li>No tracking.</li>
+      <li>No remote code — everything the extension runs ships in the extension package itself.</li>
+      <li>No network requests of its own. Header Handler does not phone home, check for updates outside Chrome's normal extension update mechanism, or send any data anywhere.</li>
+    </ul>
+  </div>
+
+  <h2>Summary</h2>
+  <p>
+    Your profiles and rules sync via your Chrome account, exactly like other Chrome
+    settings. The live log's view into request headers — including sensitive ones —
+    is limited to requests matching your own enabled rules, stays in memory for the
+    current browser session only, and is never sent anywhere. That's the entire
+    scope of what this extension touches.
+  </p>
+
+  <footer>
+    Header Handler is open source. If you have questions about this policy, please
+    open an issue on the project's repository.
+  </footer>
+</div>
+</body>
+</html>
