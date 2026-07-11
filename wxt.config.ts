@@ -8,7 +8,6 @@ export default defineConfig({
     permissions: ["declarativeNetRequest", "webRequest", "storage", "sidePanel"],
     host_permissions: ["<all_urls>"],
     action: {},
-    options_ui: { open_in_tab: true, page: "options.html" },
     side_panel: { default_path: "sidepanel.html" },
   },
   vite: () => ({ plugins: [preact()] }),
