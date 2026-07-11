@@ -49,6 +49,13 @@ describe("compileRules", () => {
     expect(rules.find((r) => r.action.requestHeaders?.[0].header === "x-a")).toBeUndefined();
     expect(rules).toHaveLength(1); // only the Cookie-remove rule remains
   });
+  it("skips an empty-value domain matcher too (empty requestDomains entry is just as invalid)", () => {
+    const c = structuredClone(cfg);
+    c.profiles[0].rules[0].matcher = { mode: "domain", value: "" };
+    const rules = compileRules(c);
+    expect(rules.find((r) => r.action.requestHeaders?.[0].header === "x-a")).toBeUndefined();
+    expect(rules).toHaveLength(1);
+  });
 });
 
 describe("diffRules", () => {

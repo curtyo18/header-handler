@@ -2,10 +2,11 @@ import type { Config, Matcher } from "../types";
 import { matcherToDnrCondition } from "./matcher";
 
 // A matcher with an empty value has no valid DNR representation (empty urlFilter/
-// regexFilter is rejected by chrome.declarativeNetRequest) — skip it rather than
-// emit a condition that would throw and drop the whole updateDynamicRules batch.
+// regexFilter/requestDomains entry is rejected by chrome.declarativeNetRequest) —
+// skip it rather than emit a condition that would throw and drop the whole
+// updateDynamicRules batch.
 function hasEmptyValue(m: Matcher): boolean {
-  return m.mode !== "domain" && m.value.trim() === "";
+  return m.value.trim() === "";
 }
 
 // DNR needs integer ids; derive them deterministically from position so the same
