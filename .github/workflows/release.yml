@@ -21,7 +21,12 @@ jobs:
           node-version: 22
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          # Node 22 ships npm 10, which hard-errors (EBADPLATFORM) on lightningcss's
+          # platform-gated optional deps being mis-recorded as non-optional in the
+          # lockfile (npm/cli#7834). npm 11 tolerates it. Upgrade before `npm ci`.
+          npm install -g npm@11
+          npm ci
 
       - name: Verify tag matches package.json version
         run: |
