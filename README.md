@@ -2,6 +2,8 @@
 
 Chrome extension that adds, overwrites, and removes HTTP request headers using rules organized into shareable **profiles**. Each profile has a URL matcher and a list of Set/Remove header rules; multiple profiles can be active at once. A side panel shows a live log of the requests your rules touched.
 
+![Header Handler options page: a profile with a URL matcher and two Set header rules, one editing a JSON header value with live validation](docs/store/screenshots/01-options.png)
+
 ## What it's for
 
 - Injecting `Authorization` / API-key headers into requests during local development
@@ -19,6 +21,8 @@ Load a release build unpacked — download the latest `header-handler-X.Y.Z.zip`
 
 Open the popup from the toolbar icon to toggle profiles; open Options (gear icon) to edit them.
 
+![Header Handler popup: a master on/off switch above per-profile toggles for "set test headers", "enable mocks", and "delete x-cache header", with a "Manage profiles & rules" button](docs/store/screenshots/02-popup.png)
+
 ## Concepts
 
 ### Profiles and header rules
@@ -32,6 +36,8 @@ A matcher decides which requests a profile or rule applies to, using one of six 
 ### Live log
 
 The side panel lists requests that matched any active rule, with the headers observed for that request — rules that added/changed a header are highlighted against the rest. It's a reconstruction, not proof of what `declarativeNetRequest` actually did per request; Chrome's Manifest V3 platform doesn't expose that to a published extension. See [`docs/adr/0001-webrequest-observer-for-live-log.md`](docs/adr/0001-webrequest-observer-for-live-log.md) for why.
+
+![Header Handler live-log side panel: a GET request to mywebsite.co.uk with chips naming each rule that matched it, such as "set test headers › +x-test-enabled" and "delete x-cache header › −x-cache"](docs/store/screenshots/03-live-log.png)
 
 The log shares the matcher module with rule compilation, so for the five string modes (Contains/Exact/Starts/Ends/Domain) it evaluates identically to the compiled rule. **Regex mode is the exception**: the log tests with JavaScript `RegExp` while the actual rule compiles to Chrome's RE2 engine, so a regex the two engines interpret differently can make the log and the real rule diverge.
 
