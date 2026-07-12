@@ -17,13 +17,6 @@ export function validateJson(v: string): { valid: boolean; error?: string } {
   }
 }
 
-// Cheap gate for whether to show the JSON badge/toolbar: looks structural AND parses.
-export function isLikelyJson(v: string): boolean {
-  const t = v.trim();
-  if (!(t.startsWith("{") || t.startsWith("["))) return false;
-  return validateJson(t).valid;
-}
-
 export function formatJson(v: string): string {
   const t = v.trim();
   try {

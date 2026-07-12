@@ -37,7 +37,7 @@ function saveErrorMessage(e: unknown): string {
   return `Couldn't save your changes: ${msg}`;
 }
 
-function App() {
+export function App() {
   const [cfg, setCfg] = useState<Config | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
@@ -348,4 +348,6 @@ function App() {
   );
 }
 
-render(<App />, document.getElementById("app")!);
+// Guarded so importing this module in a test (no #app element) doesn't render/throw.
+const rootEl = document.getElementById("app");
+if (rootEl) render(<App />, rootEl);

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { byteLength, validateJson, isLikelyJson, formatJson, minifyJson } from "./json-value";
+import { byteLength, validateJson, formatJson, minifyJson } from "./json-value";
 
 describe("byteLength", () => {
   it("counts UTF-8 bytes, not chars", () => {
@@ -19,18 +19,6 @@ describe("validateJson", () => {
   });
   it("treats empty as invalid without a message", () => {
     expect(validateJson("   ")).toEqual({ valid: false });
-  });
-});
-
-describe("isLikelyJson", () => {
-  it("true for parseable object/array", () => {
-    expect(isLikelyJson('  {"a":1} ')).toBe(true);
-    expect(isLikelyJson("[1,2]")).toBe(true);
-  });
-  it("false for plain strings or bare tokens", () => {
-    expect(isLikelyJson("Bearer abc")).toBe(false);
-    expect(isLikelyJson("123")).toBe(false); // not structural
-    expect(isLikelyJson("{nope}")).toBe(false); // structural but unparseable
   });
 });
 
