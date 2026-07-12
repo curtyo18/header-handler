@@ -22,7 +22,7 @@ describe("compileRules", () => {
     const set = rules.find((r) => r.action.requestHeaders?.[0].header === "x-a")!;
     expect(set.action.requestHeaders![0].operation).toBe("set");
     expect(set.action.requestHeaders![0].value).toBe("1");
-    expect(set.condition).toEqual({ requestDomains: ["example.com"] });
+    expect(set.condition).toMatchObject({ requestDomains: ["example.com"] });
     const rm = rules.find((r) => r.action.requestHeaders?.[0].header === "cookie")!;
     expect(rm.action.requestHeaders![0].operation).toBe("remove");
     expect(rm.action.requestHeaders![0].value).toBeUndefined();
@@ -30,7 +30,14 @@ describe("compileRules", () => {
   it("uses per-rule matcher over profile matcher when present", () => {
     const c = structuredClone(cfg);
     c.profiles[0].rules[0].matcher = { mode: "contains", value: "/api" };
-    expect(compileRules(c)[0].condition).toEqual({ urlFilter: "/api" });
+    expect(compileRules(c)[0].condition).toMatchObject({ urlFilter: "/api" });
+  });
+  it("includes main_frame in resourceTypes so top-level page navigations get headers", () => {
+    // DNR excludes main_frame when resourceTypes is omitted; without this the
+    // header applies to a page's sub-resources but not the document request itself.
+    for (const rule of compileRules(cfg)) {
+      expect(rule.condition.resourceTypes).toContain("main_frame");
+    }
   });
   it("returns [] when master disabled", () => {
     expect(compileRules({ ...cfg, masterEnabled: false })).toEqual([]);

@@ -9,6 +9,16 @@ function hasEmptyValue(m: Matcher): boolean {
   return m.value.trim() === "";
 }
 
+// When a condition omits resourceTypes, DNR matches every resource type EXCEPT
+// main_frame — so a header rule would silently skip the top-level page navigation
+// while still applying to its sub-resources (scripts, XHR, …). Enumerate every
+// type so "modify headers for this URL" covers the document request too.
+const ALL_RESOURCE_TYPES = [
+  "main_frame", "sub_frame", "stylesheet", "script", "image", "font", "object",
+  "xmlhttprequest", "ping", "csp_report", "media", "websocket", "webtransport",
+  "webbundle", "other",
+] as chrome.declarativeNetRequest.ResourceType[];
+
 // DNR needs integer ids; derive them deterministically from position so the same
 // config always compiles to the same id set (stable diffing across worker restarts).
 export function compileRules(cfg: Config): chrome.declarativeNetRequest.Rule[] {
@@ -34,7 +44,7 @@ export function compileRules(cfg: Config): chrome.declarativeNetRequest.Rule[] {
             ...(rule.op === "set" ? { value: rule.value ?? "" } : {}),
           }],
         },
-        condition: cond,
+        condition: { ...cond, resourceTypes: ALL_RESOURCE_TYPES },
       });
     }
   });
