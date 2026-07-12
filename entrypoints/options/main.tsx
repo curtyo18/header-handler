@@ -1,6 +1,6 @@
 import { render } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { configStore } from "../../src/lib/storage";
+import { configStore, dnrErrorStore, type DnrError } from "../../src/lib/storage";
 import type { Config, HeaderRule, Profile } from "../../src/types";
 import { encodeShare } from "../../src/lib/share";
 import { MatcherControl } from "./MatcherControl";
@@ -35,6 +35,7 @@ function App() {
   const [importOpen, setImportOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [dnrError, setDnrError] = useState<DnrError | null>(null);
   const settleRef = useRef<number>();
 
   // Show "Saving…" the moment an edit lands (including the debounce window before
@@ -52,6 +53,13 @@ function App() {
       if (c.profiles.length > 0) setSelectedId(c.profiles[0].id);
     });
     return configStore.watch((c) => setCfg(c));
+  }, []);
+
+  // A DNR apply failure (a rule Chrome refused) is written here by the worker;
+  // surface it as a persistent banner so the user knows some rules aren't live.
+  useEffect(() => {
+    dnrErrorStore.getValue().then(setDnrError);
+    return dnrErrorStore.watch(setDnrError);
   }, []);
 
   useEffect(() => {
@@ -160,6 +168,22 @@ function App() {
           </div>
         </div>
       </header>
+
+      {dnrError && (
+        <div class="dnr-banner" role="alert">
+          <span aria-hidden="true">⚠</span>
+          <span>
+            {dnrError.count} rule{dnrError.count === 1 ? "" : "s"} couldn't be applied by Chrome and{" "}
+            {dnrError.count === 1 ? "is" : "are"} not active. Check the matcher and value.
+            {dnrError.message && (
+              <>
+                {" "}
+                <code>{dnrError.message}</code>
+              </>
+            )}
+          </span>
+        </div>
+      )}
 
       <div class="body">
         <div class="profiles-col">

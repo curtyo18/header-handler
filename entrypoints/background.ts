@@ -1,5 +1,5 @@
-import { configStore, logStore, LOG_CAP, type LogEntry } from "../src/lib/storage";
-import { compileRules, diffRules } from "../src/lib/compile";
+import { configStore, logStore, dnrErrorStore, LOG_CAP, type LogEntry } from "../src/lib/storage";
+import { compileRules, diffRules, applyRulesWithFallback } from "../src/lib/compile";
 import { matchedRules, matchedProfileCount } from "../src/lib/matches";
 
 export default defineBackground(() => {
@@ -8,11 +8,17 @@ export default defineBackground(() => {
     const next = compileRules(cfg);
     const current = await chrome.declarativeNetRequest.getDynamicRules();
     const { addRules, removeRuleIds } = diffRules(current, next);
-    try {
-      await chrome.declarativeNetRequest.updateDynamicRules({ addRules, removeRuleIds });
-    } catch (e) {
-      console.error("DNR update failed", e);
-    }
+    let lastError = "";
+    const failed = await applyRulesWithFallback(addRules, removeRuleIds, (u) =>
+      chrome.declarativeNetRequest.updateDynamicRules(u).catch((e) => {
+        lastError = e instanceof Error ? e.message : String(e);
+        throw e;
+      }),
+    );
+    // Surface any rules DNR refused so the failure isn't invisible (was console.error only).
+    await dnrErrorStore.setValue(
+      failed.length > 0 ? { count: failed.length, message: lastError } : null,
+    );
   }
 
   configStore.watch(recompile);

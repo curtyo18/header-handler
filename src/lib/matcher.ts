@@ -13,13 +13,27 @@ export function escapeUrlFilter(v: string): string {
   return v.replace(/[|*^]/g, (c) => "\\" + c);
 }
 
+// DNR's requestDomains entries must be lowercase host-only (no scheme/port/path)
+// or the whole updateDynamicRules batch is rejected. Users naturally type
+// "GitHub.com" or paste "https://x.com:443/" — normalize to the bare host so an
+// ordinary domain matcher can't silently disable every rule (issue #4).
+export function normalizeDomain(v: string): string {
+  const t = v.trim().toLowerCase();
+  if (t === "") return t;
+  try {
+    return new URL(t.includes("://") ? t : `http://${t}`).hostname;
+  } catch {
+    return t; // leave as-is; an invalid host is skipped/surfaced downstream
+  }
+}
+
 export function matcherToDnrCondition(m: Matcher): chrome.declarativeNetRequest.RuleCondition {
   switch (m.mode) {
     case "contains": return { urlFilter: escapeUrlFilter(m.value) };
     case "starts":   return { urlFilter: "|" + escapeUrlFilter(m.value) };
     case "ends":     return { urlFilter: escapeUrlFilter(m.value) + "|" };
     case "exact":    return { urlFilter: "|" + escapeUrlFilter(m.value) + "|" };
-    case "domain":   return { requestDomains: [m.value] };
+    case "domain":   return { requestDomains: [normalizeDomain(m.value)] };
     case "regex":    return { regexFilter: m.value };
     // An unknown mode has no valid condition; refuse rather than emit a
     // filter-less (match-all) one. compileRules pre-checks isMatchMode so this
@@ -39,9 +53,12 @@ export function evaluateMatcher(m: Matcher, url: string): boolean {
     case "ends":     return url.endsWith(m.value);
     case "exact":    return url === m.value;
     case "domain": {
+      // Mirror the DNR-side normalization so the live log agrees with the rule.
+      const dom = normalizeDomain(m.value);
+      if (dom === "") return false;
       try {
         const host = new URL(url).hostname;
-        return host === m.value || host.endsWith("." + m.value);
+        return host === dom || host.endsWith("." + dom);
       } catch { return false; }
     }
     case "regex": {

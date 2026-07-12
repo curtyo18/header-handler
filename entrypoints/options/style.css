@@ -422,6 +422,25 @@ textarea {
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
 }
 
+.dnr-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 24px 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--danger);
+  border-radius: 8px;
+  background: rgba(242, 119, 122, 0.12);
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.dnr-banner code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  word-break: break-word;
+}
+
 .rules-col-header {
   display: flex;
   align-items: center;
@@ -463,6 +482,14 @@ textarea {
   border-radius: 9px;
   margin-bottom: 7px;
   overflow: hidden;
+}
+
+.rule-card-blocked {
+  border-color: var(--danger);
+}
+
+.rule-blocked-note {
+  margin: 0 10px 8px;
 }
 
 .rule-row {

@@ -9,6 +9,14 @@ function hasEmptyValue(m: Matcher): boolean {
   return m.value.trim() === "";
 }
 
+// HTTP header values can't contain raw CR/LF — DNR rejects the whole batch if
+// one does. The plain-text value field is a <textarea>, so a pasted/typed
+// newline is reachable; strip it here as the authoritative guard (imported
+// values pass through here too, not just the editor). Issue #4.
+export function sanitizeHeaderValue(v: string): string {
+  return v.replace(/[\r\n]+/g, "");
+}
+
 // When a condition omits resourceTypes, DNR matches every resource type EXCEPT
 // main_frame — so a header rule would silently skip the top-level page navigation
 // while still applying to its sub-resources (scripts, XHR, …). Enumerate every
@@ -45,7 +53,7 @@ export function compileRules(cfg: Config): chrome.declarativeNetRequest.Rule[] {
           requestHeaders: [{
             header: rule.name.toLowerCase(),
             operation: (rule.op === "set" ? "set" : "remove") as chrome.declarativeNetRequest.HeaderOperation,
-            ...(rule.op === "set" ? { value: rule.value ?? "" } : {}),
+            ...(rule.op === "set" ? { value: sanitizeHeaderValue(rule.value ?? "") } : {}),
           }],
         },
         condition: { ...cond, resourceTypes: ALL_RESOURCE_TYPES },
@@ -72,4 +80,34 @@ export function diffRules(
     .filter((r) => !nextIds.has(r.id) || addRules.some((a) => a.id === r.id))
     .map((r) => r.id);
   return { addRules, removeRuleIds };
+}
+
+type UpdateArg = { addRules?: chrome.declarativeNetRequest.Rule[]; removeRuleIds?: number[] };
+
+// updateDynamicRules is atomic: one rule DNR rejects (an RE2-unsupported regex,
+// a value/domain that slipped past validation) drops the ENTIRE batch and leaves
+// header rewriting silently broken for every profile. So on a batch failure,
+// remove the stale ids, then re-add survivors one at a time and report which
+// rules DNR refused — one bad rule can no longer disable all the others (#4).
+export async function applyRulesWithFallback(
+  addRules: chrome.declarativeNetRequest.Rule[],
+  removeRuleIds: number[],
+  apply: (u: UpdateArg) => Promise<void>,
+): Promise<chrome.declarativeNetRequest.Rule[]> {
+  try {
+    await apply({ addRules, removeRuleIds });
+    return [];
+  } catch {
+    // Removes are always valid; apply them so obsolete rules don't linger.
+    await apply({ removeRuleIds }).catch(() => {});
+    const failed: chrome.declarativeNetRequest.Rule[] = [];
+    for (const r of addRules) {
+      try {
+        await apply({ addRules: [r] });
+      } catch {
+        failed.push(r);
+      }
+    }
+    return failed;
+  }
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { compileRules, diffRules } from "./compile";
+import { compileRules, diffRules, applyRulesWithFallback } from "./compile";
 import type { Config } from "../types";
 
 const cfg: Config = {
@@ -69,6 +69,42 @@ describe("compileRules", () => {
     const rules = compileRules(c);
     expect(rules.find((r) => r.action.requestHeaders?.[0].header === "x-a")).toBeUndefined();
     expect(rules).toHaveLength(1);
+  });
+  it("strips CR/LF from a set value (raw newlines make DNR reject the whole batch)", () => {
+    const c = structuredClone(cfg);
+    c.profiles[0].rules[0].value = "a\r\nb\nc";
+    const set = compileRules(c).find((r) => r.action.requestHeaders?.[0].header === "x-a")!;
+    expect(set.action.requestHeaders![0].value).toBe("abc");
+  });
+  it("skips an unknown-mode matcher (hand-crafted import) instead of throwing or match-all", () => {
+    const c = structuredClone(cfg);
+    (c.profiles[0].rules[0] as { matcher?: unknown }).matcher = { mode: "evil", value: "x" };
+    const rules = compileRules(c);
+    expect(rules.find((r) => r.action.requestHeaders?.[0].header === "x-a")).toBeUndefined();
+    expect(rules).toHaveLength(1);
+  });
+});
+
+describe("applyRulesWithFallback", () => {
+  const rule = (id: number) => ({ id }) as chrome.declarativeNetRequest.Rule;
+
+  it("applies the batch in one call when it succeeds", async () => {
+    const calls: unknown[] = [];
+    const failed = await applyRulesWithFallback([rule(1), rule(2)], [9], async (u) => {
+      calls.push(u);
+    });
+    expect(failed).toEqual([]);
+    expect(calls).toHaveLength(1);
+  });
+
+  it("falls back to per-rule adds and reports only the rules DNR refuses", async () => {
+    // First (batch) call throws; then removes succeed; then re-add rule 2 fails.
+    const apply = async (u: { addRules?: { id: number }[]; removeRuleIds?: number[] }) => {
+      if (u.addRules && u.addRules.length > 1) throw new Error("atomic batch rejected");
+      if (u.addRules?.[0]?.id === 2) throw new Error("bad rule");
+    };
+    const failed = await applyRulesWithFallback([rule(1), rule(2), rule(3)], [9], apply);
+    expect(failed.map((r) => r.id)).toEqual([2]);
   });
 });
 

@@ -60,7 +60,10 @@ function ValueEditor({
       if (validateJson(next).valid) onChange(minifyJson(next));
       // invalid JSON: don't commit, keep draft so the user can fix it
     } else {
-      onChange(next);
+      // HTTP header values can't contain raw CR/LF; strip on commit so a pasted
+      // multi-line value can't reject the whole DNR batch (#4). compileRules
+      // sanitizes too, but keeping storage clean keeps the log/DNR consistent.
+      onChange(next.replace(/[\r\n]+/g, ""));
     }
   }
 
@@ -160,6 +163,10 @@ export function HeaderRow({
   onEditing?: () => void;
 }) {
   const [overrideOpen, setOverrideOpen] = useState(!!rule.matcher);
+  // A rule with a blocking error (broken override regex, unparseable JSON value)
+  // is skipped by compileRules, so it never reaches DNR — say so, rather than
+  // letting it look active. This is the save-gate scaffold now wired in (#4).
+  const blocked = ruleHasBlockingError(rule);
 
   function toggleOverride() {
     if (overrideOpen) {
@@ -181,7 +188,7 @@ export function HeaderRow({
   }
 
   return (
-    <div class="rule-card">
+    <div class={`rule-card ${blocked ? "rule-card-blocked" : ""}`}>
       <div class="rule-row">
         <input
           type="checkbox"
@@ -223,6 +230,11 @@ export function HeaderRow({
           </button>
         </div>
       </div>
+      {blocked && (
+        <div class="helper helper-danger rule-blocked-note" role="alert">
+          ⚠ This rule won't apply until the highlighted error is fixed.
+        </div>
+      )}
       {overrideOpen && rule.matcher && (
         <div class="override-panel">
           <div class="label-sm">OVERRIDE MATCH FOR THIS RULE</div>

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "preact/hooks";
 import type { Matcher, MatchMode } from "../../src/types";
 
 export const MODE_OPTIONS: { mode: MatchMode; label: string }[] = [
@@ -28,6 +29,38 @@ export function regexError(mode: MatchMode, value: string): string | null {
   }
 }
 
+// A regex can be valid JavaScript yet unsupported by DNR's RE2 engine (lookahead,
+// backreferences) — those pass regexError() but make updateDynamicRules reject the
+// whole batch. Ask Chrome directly so the editor catches them before they ship (#4).
+function useRe2Error(mode: MatchMode, value: string, jsInvalid: boolean): string | null {
+  const [re2Error, setRe2Error] = useState<string | null>(null);
+  useEffect(() => {
+    if (mode !== "regex" || value === "" || jsInvalid
+      || typeof chrome === "undefined" || !chrome.declarativeNetRequest?.isRegexSupported) {
+      setRe2Error(null);
+      return;
+    }
+    let cancelled = false;
+    chrome.declarativeNetRequest
+      .isRegexSupported({ regex: value })
+      .then((r) => {
+        if (cancelled) return;
+        setRe2Error(r.isSupported ? null : re2Reason(r.reason));
+      })
+      .catch(() => {}); // isRegexSupported unavailable (e.g. tests) — fall back to JS check only
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, value, jsInvalid]);
+  return re2Error;
+}
+
+function re2Reason(reason?: chrome.declarativeNetRequest.UnsupportedRegexReason): string {
+  if (reason === "syntaxError") return "not valid for Chrome's regex engine (RE2)";
+  if (reason === "memoryLimitExceeded") return "too large for Chrome's regex engine";
+  return "not supported by Chrome's regex engine (RE2)";
+}
+
 export function MatcherControl({
   matcher,
   onChange,
@@ -37,7 +70,9 @@ export function MatcherControl({
   onChange: (next: Matcher) => void;
   compact?: boolean;
 }) {
-  const error = regexError(matcher.mode, matcher.value);
+  const jsError = regexError(matcher.mode, matcher.value);
+  const re2Error = useRe2Error(matcher.mode, matcher.value, jsError !== null);
+  const error = jsError ?? re2Error;
 
   return (
     <div>
