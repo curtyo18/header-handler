@@ -1,5 +1,5 @@
 import { render } from "preact";
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import { configStore } from "../../src/lib/storage";
 import type { Config, HeaderRule, Profile } from "../../src/types";
 import { encodeShare } from "../../src/lib/share";
@@ -31,6 +31,17 @@ function App() {
   const [exportOpen, setExportOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const settleRef = useRef<number>();
+
+  // Show "Saving…" the moment an edit lands (including the debounce window before
+  // a header value commits) and settle back to "Saved" once activity stops, so
+  // the pill reflects in-flight state without flickering per keystroke.
+  function markSaving() {
+    setSaving(true);
+    clearTimeout(settleRef.current);
+    settleRef.current = window.setTimeout(() => setSaving(false), 600);
+  }
 
   useEffect(() => {
     configStore.getValue().then((c) => {
@@ -52,6 +63,7 @@ function App() {
 
   function update(next: Config) {
     setCfg(next);
+    markSaving();
     configStore.setValue(next);
   }
 
@@ -119,6 +131,10 @@ function App() {
         <div class="top-bar-left">
           <AppIcon />
           <div class="wordmark">Header Handler</div>
+          <div class={`save-status ${saving ? "saving" : ""}`} aria-live="polite">
+            <span class="save-dot" />
+            {saving ? "Saving…" : "Saved"}
+          </div>
         </div>
         <div class="top-bar-right">
           <button type="button" class="btn" onClick={() => setImportOpen(true)}>
@@ -222,6 +238,7 @@ function App() {
                     key={r.id}
                     onChange={(next) => updateRule(r.id, next)}
                     onDelete={() => deleteRule(r.id)}
+                    onEditing={markSaving}
                   />
                 ))}
                 <button type="button" class="btn-dashed btn-dashed-block" onClick={addRule}>
