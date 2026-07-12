@@ -1,5 +1,5 @@
 import type { Config, Matcher } from "../types";
-import { matcherToDnrCondition } from "./matcher";
+import { matcherToDnrCondition, isMatchMode } from "./matcher";
 
 // A matcher with an empty value has no valid DNR representation (empty urlFilter/
 // regexFilter/requestDomains entry is rejected by chrome.declarativeNetRequest) —
@@ -31,6 +31,10 @@ export function compileRules(cfg: Config): chrome.declarativeNetRequest.Rule[] {
       if (!rule.enabled) continue;
       if (rule.name.trim() === "") continue;
       const matcher = rule.matcher ?? profile.matcher;
+      // An unrecognized mode (only reachable via a hand-crafted decoded share)
+      // has no valid condition and would otherwise throw here and drop the whole
+      // batch, or worse compile to a match-all condition — skip it.
+      if (!matcher || !isMatchMode(matcher.mode)) continue;
       if (hasEmptyValue(matcher)) continue;
       const cond = matcherToDnrCondition(matcher);
       rules.push({

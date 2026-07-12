@@ -48,7 +48,10 @@ export function ImportModal({
       return;
     }
     const [head, ...rest] = queue;
-    const existing = findExisting(head.name);
+    // A name can collide with an existing profile OR with one accepted earlier in
+    // this same bundle — check both, or two same-named profiles in one bundle
+    // silently overwrite each other in finish().
+    const existing = findExisting(head.name) ?? acc.find((p) => p.name === head.name);
     if (existing && !skipConfirmForAll) {
       setPending(queue);
       setResolved(acc);
@@ -59,21 +62,20 @@ export function ImportModal({
 
   function handleSubmit() {
     setError(null);
-    let decoded;
+    // Keep withFreshIds inside the try: decodeShare now validates shape, but a
+    // future format change (or a bug) shouldn't throw an unhandled error into
+    // the click handler and fail the import with no visible feedback.
     try {
-      decoded = decodeShare(text.trim());
+      const decoded = decodeShare(text.trim());
+      if (decoded.kind === "p") {
+        setIsBundle(false);
+        processQueue([withFreshIds(decoded.profile)], [], false);
+      } else {
+        setIsBundle(true);
+        processQueue(decoded.profiles.map(withFreshIds), [], false);
+      }
     } catch (e) {
       setError((e as Error).message);
-      return;
-    }
-    if (decoded.kind === "p") {
-      const incoming = withFreshIds(decoded.profile);
-      setIsBundle(false);
-      processQueue([incoming], [], false);
-    } else {
-      const incoming = decoded.profiles.map(withFreshIds);
-      setIsBundle(true);
-      processQueue(incoming, [], false);
     }
   }
 

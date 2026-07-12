@@ -39,3 +39,42 @@ describe("share round-trip", () => {
     expect(() => decodeShare("HH1p@@@not-lz@@@")).toThrow();
   });
 });
+
+// Hand-crafted shares (valid JSON, wrong shape) must be rejected before they can
+// reach compileRules — where an unknown mode = match-all injection and a missing
+// `rules`/`matcher` permanently wedges recompiles (issue #6).
+import LZString from "lz-string";
+const forge = (kind: "p" | "g", payload: unknown) =>
+  "HH1" + kind + LZString.compressToEncodedURIComponent(JSON.stringify(payload));
+
+describe("decodeShare schema validation", () => {
+  const goodRule = { id: "", enabled: true, op: "set", name: "X", value: "1" };
+  const goodMatcher = { mode: "domain", value: "example.com" };
+
+  it("rejects a valid-JSON payload of the wrong shape", () => {
+    expect(() => decodeShare(forge("p", { hello: "world" }))).toThrow(/matcher|name|rules/i);
+    expect(() => decodeShare(forge("p", [1, 2, 3]))).toThrow();
+  });
+  it("rejects an unknown matcher mode (would compile to a match-all condition)", () => {
+    expect(() =>
+      decodeShare(forge("p", { name: "X", matcher: { mode: "evil", value: "" }, rules: [] })),
+    ).toThrow(/matcher/i);
+  });
+  it("rejects a profile missing its rules array", () => {
+    expect(() =>
+      decodeShare(forge("p", { name: "X", matcher: goodMatcher })),
+    ).toThrow(/rules/i);
+  });
+  it("rejects a rule with an invalid operation", () => {
+    expect(() =>
+      decodeShare(forge("p", { name: "X", matcher: goodMatcher, rules: [{ ...goodRule, op: "hack" }] })),
+    ).toThrow(/operation/i);
+  });
+  it("rejects a bundle whose profiles list is missing", () => {
+    expect(() => decodeShare(forge("g", { notProfiles: [] }))).toThrow(/profiles/i);
+  });
+  it("accepts a well-formed profile", () => {
+    const out = decodeShare(forge("p", { name: "X", enabled: true, matcher: goodMatcher, rules: [goodRule] }));
+    expect(out.kind).toBe("p");
+  });
+});

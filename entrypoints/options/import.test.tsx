@@ -86,6 +86,26 @@ describe("Import flow", () => {
     expect(result.profiles[0].rules[0].id).not.toBe(""); // fresh id assigned
   });
 
+  it("a bundle with two same-named profiles prompts on the in-bundle collision instead of silently dropping one", async () => {
+    // Neither "Dup" exists in config, so the collision is purely within the bundle
+    // (second vs. first-accepted) — it must still surface a confirm, not vanish.
+    const mk = (headerVal: string): Profile => ({
+      id: "",
+      name: "Dup",
+      enabled: true,
+      matcher: { mode: "contains", value: "x" },
+      rules: [{ id: "", enabled: true, op: "set", name: "X", value: headerVal }],
+    });
+    const bundle: Config = { version: 1, masterEnabled: true, profiles: [mk("first"), mk("second")] };
+    const shareStr = encodeShare({ kind: "g", config: bundle });
+
+    render(<ImportModal config={currentConfig} onClose={() => {}} onApply={() => {}} />);
+    fireEvent.input(screen.getByPlaceholderText(/paste share string/i), { target: { value: shareStr } });
+    fireEvent.click(screen.getByText("Import"));
+
+    expect(await screen.findByText(/Overwrite "Dup"\?/)).toBeTruthy();
+  });
+
   it("corrupt share string shows an error and applies nothing", async () => {
     let applied: Config | null = null;
     let closed = false;
