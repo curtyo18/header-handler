@@ -1,7 +1,6 @@
 import { configStore, logStore, LOG_CAP, type LogEntry } from "../src/lib/storage";
 import { compileRules, diffRules } from "../src/lib/compile";
-import { evaluateMatcher } from "../src/lib/matcher";
-import type { Config } from "../src/types";
+import { matchedRules, matchedProfileCount } from "../src/lib/matches";
 
 export default defineBackground(() => {
   async function recompile() {
@@ -20,20 +19,6 @@ export default defineBackground(() => {
   chrome.runtime.onInstalled.addListener(recompile);
   chrome.runtime.onStartup.addListener(recompile);
   recompile();
-
-  // Live-log reconstruction (see ADR 0001): observe requests, re-run the matcher.
-  function matchedRules(cfg: Config, url: string): string[] {
-    if (!cfg.masterEnabled) return [];
-    const hits: string[] = [];
-    for (const p of cfg.profiles) {
-      if (!p.enabled) continue;
-      for (const r of p.rules) {
-        if (!r.enabled) continue;
-        if (evaluateMatcher(r.matcher ?? p.matcher, url)) hits.push(`${p.id}:${r.id}`);
-      }
-    }
-    return hits;
-  }
 
   chrome.webRequest.onSendHeaders.addListener(
     async (details) => {
@@ -55,4 +40,44 @@ export default defineBackground(() => {
     { urls: ["<all_urls>"] },
     ["requestHeaders", "extraHeaders"],
   );
+
+  // Badge: count of distinct enabled profiles with a rule matching the active tab's URL.
+  // Tabs can close between an event firing and these calls running, so every chrome.*
+  // call here is wrapped the same way recompile() wraps its DNR call above.
+  async function updateBadge(tabId: number, url: string | undefined) {
+    try {
+      const cfg = await configStore.getValue();
+      const count = url ? matchedProfileCount(cfg, url) : 0;
+      await chrome.action.setBadgeText({ tabId, text: count > 0 ? String(count) : "" });
+    } catch (e) {
+      console.error("Badge update failed", e);
+    }
+  }
+
+  async function updateAllBadges() {
+    try {
+      const tabs = await chrome.tabs.query({});
+      await Promise.all(tabs.filter((t) => t.id != null).map((t) => updateBadge(t.id!, t.url)));
+    } catch (e) {
+      console.error("Badge update failed", e);
+    }
+  }
+
+  chrome.action.setBadgeBackgroundColor({ color: "#6ea8fe" });
+  configStore.watch(updateAllBadges);
+  chrome.runtime.onInstalled.addListener(updateAllBadges);
+  chrome.runtime.onStartup.addListener(updateAllBadges);
+
+  chrome.tabs.onActivated.addListener(async ({ tabId }) => {
+    try {
+      const tab = await chrome.tabs.get(tabId);
+      await updateBadge(tabId, tab.url);
+    } catch (e) {
+      console.error("Badge update failed", e);
+    }
+  });
+  chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    if (changeInfo.url) updateBadge(tabId, changeInfo.url);
+    else if (changeInfo.status === "complete") updateBadge(tabId, tab.url);
+  });
 });
