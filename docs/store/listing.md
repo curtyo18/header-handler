@@ -80,12 +80,11 @@ Current manifest: `Add, overwrite, and remove request headers with shareable pro
 
 ## Screenshots (≥1 required; 1280×800 or 640×400)
 
-- **Needed:** render `docs/screenshot-mock.html` (already sized 1280×800) to a
-  PNG/JPG — it's currently HTML, not an uploadable image.
-- **Recommended composition** (matches the existing mock): popup with a couple
-  of profiles toggled on; Options page with a profile's matcher + header rules
-  table; side panel with an expanded log entry showing highlighted matched
-  headers.
+- **Ready:** three 1280×800 PNGs are in `docs/store/screenshots/` (options,
+  popup, live-log) — upload these directly.
+- **Composition:** popup with a couple of profiles toggled on; Options page
+  with a profile's matcher + header rules table; side panel with an expanded
+  log entry showing highlighted matched headers.
 
 Store icon 128×128 is already present (`public/icons/128.png`).
 
@@ -140,7 +139,9 @@ browser before submitting.)*
   it handles**, do NOT claim "does not collect":
   - **Authentication information** (the live log can observe
     `Authorization` / `Cookie` headers on requests matching an enabled rule).
-  - **Web history** (matched request URLs appear in the live log).
+  - **Web history** (matched request URLs appear in the live log; the toolbar
+    badge count also reads the active URL of open tabs — via host access, no
+    `tabs` permission — to show how many profiles apply to the current page).
 - **Certify the Limited Use commitment:** data is **processed locally on the
   user's device, never transmitted off-device, never sold, and never
   transferred** for any purpose other than the user's own inspection.
@@ -153,8 +154,11 @@ browser before submitting.)*
 > user's own profile/rule configuration — nothing is rewritten based on remote
 > input. `webRequest` is used strictly read-only (non-blocking) to power an
 > in-session live log that reconstructs which rules matched a request, using
-> the same matcher module that compiles the DNR rules, so the log can't drift
-> from what the rules actually do. The log (which can include sensitive
+> the same matcher module that compiles the DNR rules. For the five string
+> matcher modes the log tracks the compiled rule exactly; regex mode is
+> evaluated by JS `RegExp` for the log and RE2 for the actual DNR rule, so a
+> regex rule can diverge between the log and reality. The log (which can
+> include sensitive
 > headers like Authorization/Cookie for matched requests) lives only in
 > `chrome.storage.session` — in-memory, cleared on browser close, never
 > transmitted anywhere. Profile/rule config lives in `chrome.storage.sync`.

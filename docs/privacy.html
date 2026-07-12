@@ -106,7 +106,10 @@
     you're signed into Chrome, this configuration will sync across your Chrome
     instances on other devices, the same way bookmarks or extension settings do.
     This data is managed entirely by Chrome; Header Handler does not run its own
-    server and cannot see this data outside your browser.
+    server and cannot see this data outside your browser. (Chrome's synced storage
+    caps a single item at 8&nbsp;KB, and the whole configuration is stored as one
+    item, so there is a practical limit on how much you can save; the options page
+    warns you as you approach it.)
   </p>
 
   <h2>The live log and sensitive headers</h2>

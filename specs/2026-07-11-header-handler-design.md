@@ -30,7 +30,7 @@ Three surfaces, each playing to its strength:
 
 ## Data model
 
-Stored in `chrome.storage.sync` (config is small, benefits from cross-device sync). Live log state is **not** stored — it lives in `chrome.storage.session` / in-memory only.
+Stored in `chrome.storage.sync` (benefits from cross-device sync). Note `sync` has an **8 KB-per-item** quota and the whole config is a single item, so there's a practical ceiling on config size; the options UI warns as it approaches the limit and shows a failed-save state rather than dropping an over-quota write silently. Live log state is **not** stored — it lives in `chrome.storage.session` / in-memory only.
 
 ```ts
 type MatchMode = "contains" | "exact" | "starts" | "ends" | "domain" | "regex";
@@ -122,8 +122,8 @@ Compressed, URL-safe, version-tagged. See ADR 0002.
 
 ## Error handling
 
-- Invalid custom regex in a matcher → inline validation in the editor before save; never compiled.
-- DNR `updateDynamicRules` rejection → caught, surfaced as a toast in the options page with the DNR error text; config stays saved so the user can fix and recompile.
+- Invalid custom regex in a matcher → inline validation in the editor: checked with both JS `RegExp` and `chrome.declarativeNetRequest.isRegexSupported` (the RE2 engine DNR actually uses), so RE2-unsupported patterns are flagged before they ship. A rule flagged with a blocking error is marked "won't apply" and skipped at compile time.
+- DNR `updateDynamicRules` rejection → because the call is atomic, a batch failure falls back to re-adding rules individually (skipping the offender), and the failure is surfaced as a persistent banner in the options page with the DNR error text; config stays saved so the user can fix and recompile.
 - Import failures → single error message, no mutation.
 - Service-worker restart → compilation and log buffer rehydrate from `storage.sync` / `storage.session` on wake.
 

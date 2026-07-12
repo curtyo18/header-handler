@@ -31,7 +31,9 @@ A matcher decides which requests a profile or rule applies to, using one of six 
 
 ### Live log
 
-The side panel lists requests that matched any active rule, with the headers observed for that request — rules that added/changed a header are highlighted against the rest. It's a reconstruction (evaluated with the same matcher logic that compiles the rules), not proof of what `declarativeNetRequest` actually did per request; Chrome's Manifest V3 platform doesn't expose that to a published extension. See [`docs/adr/0001-webrequest-observer-for-live-log.md`](docs/adr/0001-webrequest-observer-for-live-log.md) for why.
+The side panel lists requests that matched any active rule, with the headers observed for that request — rules that added/changed a header are highlighted against the rest. It's a reconstruction, not proof of what `declarativeNetRequest` actually did per request; Chrome's Manifest V3 platform doesn't expose that to a published extension. See [`docs/adr/0001-webrequest-observer-for-live-log.md`](docs/adr/0001-webrequest-observer-for-live-log.md) for why.
+
+The log shares the matcher module with rule compilation, so for the five string modes (Contains/Exact/Starts/Ends/Domain) it evaluates identically to the compiled rule. **Regex mode is the exception**: the log tests with JavaScript `RegExp` while the actual rule compiles to Chrome's RE2 engine, so a regex the two engines interpret differently can make the log and the real rule diverge.
 
 The log is session-only, held in memory, and never persisted or transmitted anywhere.
 
@@ -41,7 +43,7 @@ Export a single profile or your whole config as a compressed, URL-safe string pr
 
 ### Storage
 
-Profiles and the master on/off switch persist via `chrome.storage.sync` (so they follow you across signed-in Chrome instances, like bookmarks). The live log uses `chrome.storage.session` and is cleared when the browser closes, or manually via the Clear button.
+Profiles and the master on/off switch persist via `chrome.storage.sync` (so they follow you across signed-in Chrome instances, like bookmarks). Note that `sync` enforces an **8 KB-per-item** quota, and the whole config is stored as one item — so there's a practical ceiling on how many profiles/rules (and how large a JSON header value) you can save. Options warns as the config approaches the limit and shows a "Save failed" state if a write is rejected, rather than silently dropping it. The live log uses `chrome.storage.session` and is cleared when the browser closes, or manually via the Clear button.
 
 ## Permissions
 
@@ -72,7 +74,7 @@ Load the built `.output/chrome-mv3` via `chrome://extensions` → "Load unpacked
 
 ### Architecture
 
-Popup and Options edit the `Profile[]` config in `chrome.storage.sync`; on any change, `src/lib/compile.ts` recompiles it into `declarativeNetRequest` dynamic rules in the background service worker. A separate, non-blocking `webRequest` listener re-evaluates the same config against observed requests (via `src/lib/matcher.ts`, shared with compilation so the log and the real rules can't drift) and forwards matches to the side panel.
+Popup and Options edit the `Profile[]` config in `chrome.storage.sync`; on any change, `src/lib/compile.ts` recompiles it into `declarativeNetRequest` dynamic rules in the background service worker. A separate, non-blocking `webRequest` listener re-evaluates the same config against observed requests (via `src/lib/matcher.ts`, shared with compilation) and forwards matches to the side panel. The shared matcher keeps the log and the compiled rules aligned for the string modes; regex is evaluated by two different engines (JS `RegExp` for the log, RE2 for the rule) and can diverge.
 
 Full design in [`specs/2026-07-11-header-handler-design.md`](specs/2026-07-11-header-handler-design.md).
 
