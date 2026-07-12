@@ -214,6 +214,13 @@ button {
   flex: none;
 }
 
+.panel-error {
+  padding: 8px 12px 10px;
+  color: var(--danger);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
 .btn {
   height: 32px;
   border-radius: 8px;

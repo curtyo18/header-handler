@@ -35,11 +35,34 @@ function Switch({ on, onClick, size }: { on: boolean; onClick: () => void; size:
 
 function App() {
   const [cfg, setCfg] = useState<Config | null>(null);
+  // Resolve the window id at mount so opening the side panel needs no preceding
+  // await — chrome.sidePanel.open() must be the first await in the click handler
+  // or Chrome's user-gesture check can reject it (issue #7).
+  const [windowId, setWindowId] = useState<number | null>(null);
+  const [panelError, setPanelError] = useState(false);
 
   useEffect(() => {
     configStore.getValue().then(setCfg);
     return configStore.watch(setCfg);
   }, []);
+
+  useEffect(() => {
+    chrome.windows.getCurrent().then((w) => setWindowId(w.id ?? null)).catch(() => {});
+  }, []);
+
+  async function openLiveLog() {
+    setPanelError(false);
+    try {
+      // windowId is already resolved (mount), so open() is the first await here.
+      const wid = windowId ?? (await chrome.windows.getCurrent()).id;
+      if (wid == null) throw new Error("no window id");
+      await chrome.sidePanel.open({ windowId: wid });
+      window.close();
+    } catch {
+      // Don't fail silently — the panel didn't open; tell the user.
+      setPanelError(true);
+    }
+  }
 
   if (!cfg) return null;
 
@@ -113,15 +136,16 @@ function App() {
           class="btn btn-icon"
           title="Open live log"
           aria-label="Open live log"
-          onClick={async () => {
-            const win = await chrome.windows.getCurrent();
-            if (win.id != null) await chrome.sidePanel.open({ windowId: win.id });
-            window.close();
-          }}
+          onClick={openLiveLog}
         >
           📋
         </button>
       </footer>
+      {panelError && (
+        <div class="panel-error" role="alert">
+          Couldn't open the live log. Try the extension's side-panel icon in the toolbar.
+        </div>
+      )}
     </div>
   );
 }
