@@ -1,4 +1,4 @@
-import { useState } from "preact/hooks";
+import { useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { HeaderRule, Matcher } from "../../src/types";
 import { byteLength, formatJson, isLikelyJson, minifyJson, validateJson } from "../../src/lib/json-value";
 import { MatcherControl, regexError } from "./MatcherControl";
@@ -23,6 +23,29 @@ function ValueEditor({ rule, onChange }: { rule: HeaderRule; onChange: (value: s
   const looksJson = isLikelyJson(draft) || (draft.trim().startsWith("{") || draft.trim().startsWith("["));
   const jsonCheck = looksJson ? validateJson(draft) : null;
   const bytes = byteLength(draft);
+  const taRef = useRef<HTMLTextAreaElement>(null);
+  const pendingCaret = useRef<number | null>(null);
+
+  // Plain and JSON modes render different textarea nodes, so the moment a
+  // keystroke flips looksJson the mounted textarea is swapped out and loses
+  // focus mid-edit. Re-focus and restore the caret on the newly-mounted one.
+  useLayoutEffect(() => {
+    if (pendingCaret.current != null && taRef.current) {
+      const pos = pendingCaret.current;
+      pendingCaret.current = null;
+      taRef.current.focus();
+      taRef.current.setSelectionRange(pos, pos);
+    }
+  });
+
+  function handleInput(e: Event) {
+    const ta = e.target as HTMLTextAreaElement;
+    const next = ta.value;
+    const nextLooksJson =
+      isLikelyJson(next) || next.trim().startsWith("{") || next.trim().startsWith("[");
+    if (nextLooksJson !== looksJson) pendingCaret.current = ta.selectionStart;
+    setDraft(next);
+  }
 
   function commit(next: string) {
     if (jsonCheck?.valid) {
@@ -36,10 +59,11 @@ function ValueEditor({ rule, onChange }: { rule: HeaderRule; onChange: (value: s
   if (!looksJson) {
     return (
       <textarea
+        ref={taRef}
         class="input input-mono value-input"
         value={draft}
         placeholder="header value"
-        onInput={(e) => setDraft((e.target as HTMLTextAreaElement).value)}
+        onInput={handleInput}
         onBlur={() => commit(draft)}
       />
     );
@@ -65,9 +89,10 @@ function ValueEditor({ rule, onChange }: { rule: HeaderRule; onChange: (value: s
       </div>
       <div class="json-body">
         <textarea
+          ref={taRef}
           class="json-body-input"
           value={draft}
-          onInput={(e) => setDraft((e.target as HTMLTextAreaElement).value)}
+          onInput={handleInput}
           onBlur={() => commit(draft)}
           spellcheck={false}
         />
