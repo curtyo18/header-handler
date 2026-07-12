@@ -7,6 +7,9 @@ import { MatcherControl } from "./MatcherControl";
 import { HeaderRow } from "./HeaderRow";
 import { ImportModal } from "./ImportModal";
 
+const REPO_URL = "https://github.com/curtyo18/header-handler";
+const NEW_ISSUE_URL = `${REPO_URL}/issues/new`;
+
 function AppIcon() {
   return (
     <div class="app-icon">
@@ -249,6 +252,18 @@ function App() {
           )}
         </div>
       </div>
+
+      <footer class="app-footer">
+        <span class="footer-tagline">Open source · no tracking · no servers</span>
+        <span class="footer-links">
+          <a href={REPO_URL} target="_blank" rel="noopener noreferrer">
+            GitHub
+          </a>
+          <a href={NEW_ISSUE_URL} target="_blank" rel="noopener noreferrer">
+            Spot an issue?
+          </a>
+        </span>
+      </footer>
 
       {importOpen && (
         <ImportModal config={cfg} onClose={() => setImportOpen(false)} onApply={(next) => update(next)} />

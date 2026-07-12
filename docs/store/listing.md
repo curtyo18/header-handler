@@ -161,10 +161,10 @@ browser before submitting.)*
 
 ## Submission checklist (HH)
 
-- [ ] MV3 package built at current version (0.1.4) — `.output/header-handler-0.1.4-chrome.zip`
+- [ ] MV3 package built at the current `package.json` version — the latest `.output/header-handler-<version>-chrome.zip` produced by `npm run zip`
 - [ ] Privacy policy hosted — enable GitHub Pages (Settings → Pages → `main` / `/docs`), confirm it renders in browser
 - [x] 128×128 icon present (`public/icons/128.png`)
-- [ ] ≥1 screenshot — render `docs/screenshot-mock.html` to PNG/JPG first
+- [x] ≥1 screenshot — three 1280×800 shots ready in `docs/store/screenshots/` (options, popup, live-log)
 - [ ] CWS developer account + $5 fee + 2-Step Verification + verified contact email (user)
 - [ ] Category / language / visibility set in dashboard
 - [ ] Paste summary, detailed description, single-purpose, permission
