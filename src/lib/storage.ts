@@ -6,6 +6,11 @@ export const configStore = storage.defineItem<Config>("sync:config", {
   fallback: emptyConfig(),
 });
 
+// chrome.storage.sync enforces QUOTA_BYTES_PER_ITEM (8 KB) per item — far below
+// the ~100 KB total quota — and the whole config is one item. A write past it
+// rejects; the UI must reflect that rather than claim "Saved" (issue #5).
+export const SYNC_ITEM_QUOTA_BYTES = 8192;
+
 export interface LogEntry {
   ts: number;
   method: string;

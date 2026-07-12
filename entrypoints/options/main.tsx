@@ -1,8 +1,9 @@
 import { render } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { configStore, dnrErrorStore, type DnrError } from "../../src/lib/storage";
+import { configStore, dnrErrorStore, SYNC_ITEM_QUOTA_BYTES, type DnrError } from "../../src/lib/storage";
 import type { Config, HeaderRule, Profile } from "../../src/types";
 import { encodeShare } from "../../src/lib/share";
+import { byteLength } from "../../src/lib/json-value";
 import { MatcherControl } from "./MatcherControl";
 import { HeaderRow } from "./HeaderRow";
 import { ImportModal } from "./ImportModal";
@@ -28,6 +29,14 @@ function newRule(): HeaderRule {
   return { id: crypto.randomUUID(), enabled: true, op: "set", name: "", value: "" };
 }
 
+function saveErrorMessage(e: unknown): string {
+  const msg = e instanceof Error ? e.message : String(e);
+  if (/quota/i.test(msg)) {
+    return "Config is too large to save — it's over Chrome's 8 KB sync-storage limit. Shrink or remove some rules or values, then edit again.";
+  }
+  return `Couldn't save your changes: ${msg}`;
+}
+
 function App() {
   const [cfg, setCfg] = useState<Config | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -35,12 +44,14 @@ function App() {
   const [importOpen, setImportOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [dnrError, setDnrError] = useState<DnrError | null>(null);
   const settleRef = useRef<number>();
 
   // Show "Saving…" the moment an edit lands (including the debounce window before
   // a header value commits) and settle back to "Saved" once activity stops, so
-  // the pill reflects in-flight state without flickering per keystroke.
+  // the pill reflects in-flight state without flickering per keystroke. The
+  // authoritative Saved/failed state is set by update() from the write promise.
   function markSaving() {
     setSaving(true);
     clearTimeout(settleRef.current);
@@ -72,10 +83,28 @@ function App() {
 
   const selected = cfg.profiles.find((p) => p.id === selectedId) ?? null;
 
+  // Warn against the whole-config serialized size (the real sync-item budget),
+  // not just a single header value — one item holds every profile (issue #5).
+  const configBytes = byteLength(JSON.stringify(cfg));
+  const nearQuota = !saveError && configBytes >= SYNC_ITEM_QUOTA_BYTES * 0.8;
+
+  // Drive the save pill from the actual write, not a timer: a chrome.storage.sync
+  // write that exceeds the 8 KB item quota rejects, and the UI must show that
+  // failure instead of settling to "Saved" regardless (issue #5).
   function update(next: Config) {
     setCfg(next);
-    markSaving();
-    configStore.setValue(next);
+    setSaving(true);
+    clearTimeout(settleRef.current);
+    configStore.setValue(next).then(
+      () => {
+        setSaving(false);
+        setSaveError(null);
+      },
+      (e) => {
+        setSaving(false);
+        setSaveError(saveErrorMessage(e));
+      },
+    );
   }
 
   function updateSelected(patch: Partial<Profile>) {
@@ -142,9 +171,13 @@ function App() {
         <div class="top-bar-left">
           <AppIcon />
           <div class="wordmark">Header Handler</div>
-          <div class={`save-status ${saving ? "saving" : ""}`} aria-live="polite">
+          <div
+            class={`save-status ${saveError ? "save-failed" : saving ? "saving" : ""}`}
+            aria-live="polite"
+            title={saveError ?? undefined}
+          >
             <span class="save-dot" />
-            {saving ? "Saving…" : "Saved"}
+            {saveError ? "Save failed" : saving ? "Saving…" : "Saved"}
           </div>
         </div>
         <div class="top-bar-right">
@@ -168,6 +201,23 @@ function App() {
           </div>
         </div>
       </header>
+
+      {saveError && (
+        <div class="dnr-banner" role="alert">
+          <span aria-hidden="true">⚠</span>
+          <span>{saveError}</span>
+        </div>
+      )}
+
+      {nearQuota && (
+        <div class="size-banner" role="status">
+          <span aria-hidden="true">⚠</span>
+          <span>
+            This config is {configBytes.toLocaleString()} bytes, near Chrome's {SYNC_ITEM_QUOTA_BYTES.toLocaleString()}
+            -byte sync limit. Saves will start failing if it grows much larger.
+          </span>
+        </div>
+      )}
 
       {dnrError && (
         <div class="dnr-banner" role="alert">

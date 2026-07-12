@@ -132,6 +132,14 @@ textarea {
   background: var(--muted-3);
 }
 
+.save-status.save-failed {
+  color: var(--danger);
+}
+
+.save-status.save-failed .save-dot {
+  background: var(--danger);
+}
+
 .top-bar-right {
   display: flex;
   align-items: center;
@@ -439,6 +447,20 @@ textarea {
 .dnr-banner code {
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
   word-break: break-word;
+}
+
+.size-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 24px 12px;
+  padding: 10px 14px;
+  border: 1px solid #e0b96a;
+  border-radius: 8px;
+  background: rgba(224, 185, 106, 0.12);
+  color: #e0b96a;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .rules-col-header {

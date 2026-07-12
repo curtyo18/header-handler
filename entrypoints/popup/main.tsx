@@ -43,11 +43,13 @@ function App() {
 
   if (!cfg) return null;
 
+  // Revert the optimistic toggle if the write fails (e.g. over the 8 KB sync
+  // quota) so the switch can't silently disagree with what's stored (issue #5).
   function toggleMaster() {
     setCfg((c) => {
       if (!c) return c;
       const next = { ...c, masterEnabled: !c.masterEnabled };
-      configStore.setValue(next);
+      configStore.setValue(next).catch(() => setCfg(c));
       return next;
     });
   }
@@ -59,7 +61,7 @@ function App() {
         ...c,
         profiles: c.profiles.map((p) => (p.id === id ? { ...p, enabled: !p.enabled } : p)),
       };
-      configStore.setValue(next);
+      configStore.setValue(next).catch(() => setCfg(c));
       return next;
     });
   }
