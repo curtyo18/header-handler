@@ -43,7 +43,7 @@ Export a single profile or your whole config as a compressed, URL-safe string pr
 
 ### Storage
 
-Profiles and the master on/off switch persist via `chrome.storage.sync` (so they follow you across signed-in Chrome instances, like bookmarks). Note that `sync` enforces an **8 KB-per-item** quota, and the whole config is stored as one item — so there's a practical ceiling on how many profiles/rules (and how large a JSON header value) you can save. Options warns as the config approaches the limit and shows a "Save failed" state if a write is rejected, rather than silently dropping it. The live log uses `chrome.storage.session` and is cleared when the browser closes, or manually via the Clear button.
+Profiles and the master on/off switch persist via `chrome.storage.sync` (so they follow you across signed-in Chrome instances, like bookmarks). Note that `sync` enforces an **8 KB-per-item** quota, and the whole config is stored as one item. The config is **compressed at rest** with LZString before it's written, which raises the effective ceiling roughly 2–3× for typical (repetitive) configs while keeping cross-device sync — see [`docs/adr/0003-compressed-config-at-rest.md`](docs/adr/0003-compressed-config-at-rest.md). There's still a practical ceiling on how many profiles/rules (and how large a JSON header value) you can save; Options warns as the *compressed* size approaches the limit and shows a "Save failed" state if a write is rejected, rather than silently dropping it. The live log uses `chrome.storage.session` and is cleared when the browser closes, or manually via the Clear button.
 
 ## Permissions
 

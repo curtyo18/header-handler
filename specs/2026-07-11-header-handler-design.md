@@ -30,7 +30,7 @@ Three surfaces, each playing to its strength:
 
 ## Data model
 
-Stored in `chrome.storage.sync` (benefits from cross-device sync). Note `sync` has an **8 KB-per-item** quota and the whole config is a single item, so there's a practical ceiling on config size; the options UI warns as it approaches the limit and shows a failed-save state rather than dropping an over-quota write silently. Live log state is **not** stored — it lives in `chrome.storage.session` / in-memory only.
+Stored in `chrome.storage.sync` (benefits from cross-device sync). Note `sync` has an **8 KB-per-item** quota and the whole config is a single item. The config is **compressed at rest** with LZString (`compressToEncodedURIComponent`, marker-prefixed `HHC1…`) in `src/lib/config-codec.ts`, raising the effective ceiling ~2–3× for typical repetitive configs; a legacy raw-object value from before compression still reads and re-compresses on the next save (see ADR 0003). There's still a practical ceiling on config size; the options UI warns as the *compressed* size approaches the limit and shows a failed-save state rather than dropping an over-quota write silently. Live log state is **not** stored — it lives in `chrome.storage.session` / in-memory only.
 
 ```ts
 type MatchMode = "contains" | "exact" | "starts" | "ends" | "domain" | "regex";

@@ -24,6 +24,7 @@ const setValue = vi.fn(() => Promise.reject(new Error("QUOTA_BYTES_PER_ITEM quot
 
 vi.mock("../../src/lib/storage", () => ({
   SYNC_ITEM_QUOTA_BYTES: 8192,
+  configStorageBytes: () => 100, // well under quota; the near-quota banner is out of scope here
   configStore: {
     getValue: () => Promise.resolve(currentConfig),
     setValue,
