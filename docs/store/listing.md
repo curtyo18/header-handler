@@ -36,11 +36,21 @@ Current manifest: `Add, overwrite, and remove request headers with shareable pro
 
 ## Detailed description (max 16,000 chars)
 
-> **Add, overwrite, and remove request headers — organized into shareable profiles.**
+> **A simple, open-source header editor. No accounts, no tracking, no servers, no mess.**
 >
-> Header Handler lets you define named **profiles**, each with a URL matcher
-> and a list of header rules (**Set** or **Remove**). Multiple profiles can be
-> active at once; the applied rule set is the union of everything enabled.
+> Header Handler adds, overwrites, and removes HTTP request headers — that's it.
+> It's fully open source, makes no network requests of its own, phones home to
+> nothing, and runs no remotely hosted code. Nothing you configure ever leaves
+> your machine. Install it, set a rule, done.
+>
+> You define named **profiles**, each with a URL matcher and a list of header
+> rules (**Set** or **Remove**). Multiple profiles can be active at once; the
+> applied rule set is the union of everything enabled.
+>
+> **Shareable in one string.** Every profile — or your whole setup — exports to
+> a single copy-paste string. Send it to a teammate or paste it into another
+> browser and they have the exact same rules in seconds. No sign-up, no sync
+> account, no config files to pass around.
 >
 > **Built for local development and debugging.** Inject `Authorization` or API
 > key headers into requests without a proxy, strip or override `Origin` /
@@ -53,18 +63,12 @@ Current manifest: `Add, overwrite, and remove request headers with shareable pro
 > changed headers highlighted against the rest. Session-only; cleared when the
 > browser closes or on demand.
 >
-> **Share your setup.** Export a single profile or your whole config as a
-> compressed, versioned text string. Paste it into another browser (or share
-> it with a teammate) to install the same rules via Import.
->
-> **No servers, no telemetry.**
+> **Where your data lives (all on-device).**
 > • Profiles and rules are stored in Chrome's own synced storage
 >   (`chrome.storage.sync`) — the same mechanism as bookmarks.
 > • The live log lives only in memory for the browser session
 >   (`chrome.storage.session`) and is never written to disk.
-> • Header Handler makes no network requests of its own, phones home to
->   nothing, and runs no remotely hosted code — everything ships in the
->   extension package.
+> • Everything ships in the extension package — no remotely hosted code.
 >
 > **Scope note (by design):** the live log uses read-only `webRequest`
 > observation to reconstruct which rules applied — Manifest V3 doesn't expose
