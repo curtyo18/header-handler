@@ -11,6 +11,10 @@ export function matchedRules(cfg: Config, url: string): string[] {
     if (!p.enabled) continue;
     for (const r of p.rules) {
       if (!r.enabled) continue;
+      // compileRules skips a blank-name rule (DNR emits nothing), so the badge
+      // and live log must not count it as applied either — one source of truth
+      // for "which rules apply to this URL" (issue #8).
+      if (r.name.trim() === "") continue;
       if (evaluateMatcher(r.matcher ?? p.matcher, url)) hits.push(`${p.id}:${r.id}`);
     }
   }

@@ -26,12 +26,26 @@ export default defineBackground(() => {
   chrome.runtime.onStartup.addListener(recompile);
   recompile();
 
+  // Serialize log writes through a single chained promise: the listener does a
+  // read-modify-write on the log store, and concurrent requests (parallel
+  // subresources) would otherwise interleave getValue/setValue and clobber each
+  // other's entries. Chaining makes each append atomic w.r.t. the others (#8).
+  let logWrite: Promise<void> = Promise.resolve();
+  function appendLog(entry: LogEntry) {
+    logWrite = logWrite.then(async () => {
+      const log = await logStore.getValue();
+      await logStore.setValue([entry, ...log].slice(0, LOG_CAP));
+    });
+    return logWrite;
+  }
+
   chrome.webRequest.onSendHeaders.addListener(
     async (details) => {
       const cfg = await configStore.getValue();
       const matched = matchedRules(cfg, details.url);
       if (matched.length === 0) return;
       const entry: LogEntry = {
+        id: crypto.randomUUID(),
         ts: Date.now(),
         method: details.method,
         url: details.url,
@@ -40,8 +54,7 @@ export default defineBackground(() => {
         })),
         matchedRuleIds: matched,
       };
-      const log = await logStore.getValue();
-      await logStore.setValue([entry, ...log].slice(0, LOG_CAP));
+      await appendLog(entry);
     },
     { urls: ["<all_urls>"] },
     ["requestHeaders", "extraHeaders"],

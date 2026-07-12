@@ -44,6 +44,12 @@ describe("matchedRules", () => {
   it("returns nothing for a non-matching URL", () => {
     expect(matchedRules(cfg, "https://unrelated.com/x")).toEqual([]);
   });
+
+  it("skips a blank-name rule so the badge/log agree with compileRules (which emits nothing for it)", () => {
+    const c = structuredClone(cfg);
+    c.profiles[0].rules[2].name = "   ";
+    expect(matchedRules(c, "https://example.com/x")).toEqual(["p1:r1"]); // r3 no longer reported
+  });
 });
 
 describe("matchedProfileCount", () => {

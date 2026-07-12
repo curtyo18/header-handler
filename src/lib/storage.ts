@@ -12,6 +12,7 @@ export const configStore = storage.defineItem<Config>("sync:config", {
 export const SYNC_ITEM_QUOTA_BYTES = 8192;
 
 export interface LogEntry {
+  id: string; // stable unique key; two requests can share a ts (parallel subresources)
   ts: number;
   method: string;
   url: string;

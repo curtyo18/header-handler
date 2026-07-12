@@ -68,7 +68,19 @@ function LogCard({ entry, cfg }: { entry: LogEntry; cfg: Config | null }) {
 
   return (
     <div class="log-card">
-      <div class="log-line1" onClick={() => setExpanded((e) => !e)}>
+      <div
+        class="log-line1"
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
+        onClick={() => setExpanded((e) => !e)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setExpanded((v) => !v);
+          }
+        }}
+      >
         <span class={`method-chip ${methodClass(entry.method)}`}>{entry.method}</span>
         <span class="log-url">
           <span class="log-host">{host}</span>
@@ -132,7 +144,7 @@ function App() {
       ) : (
         <div class="log-list">
           {(log ?? []).map((entry) => (
-            <LogCard entry={entry} cfg={cfg} key={entry.ts} />
+            <LogCard entry={entry} cfg={cfg} key={entry.id} />
           ))}
         </div>
       )}

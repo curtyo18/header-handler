@@ -112,6 +112,7 @@ function App() {
           type="button"
           class="btn btn-icon"
           title="Open live log"
+          aria-label="Open live log"
           onClick={async () => {
             const win = await chrome.windows.getCurrent();
             if (win.id != null) await chrome.sidePanel.open({ windowId: win.id });
