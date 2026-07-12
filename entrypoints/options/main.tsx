@@ -69,6 +69,19 @@ function App() {
     setSelectedId(p.id);
   }
 
+  function deleteProfile(profileId: string) {
+    const profile = cfg!.profiles.find((p) => p.id === profileId);
+    if (!profile) return;
+    if (!window.confirm(`Delete profile "${profile.name}"? This cannot be undone.`)) return;
+
+    const remaining = cfg!.profiles.filter((p) => p.id !== profileId);
+    update({ ...cfg!, profiles: remaining });
+
+    if (profileId === selectedId) {
+      setSelectedId(remaining.length > 0 ? remaining[0].id : null);
+    }
+  }
+
   function updateRule(ruleId: string, next: HeaderRule) {
     if (!selected) return;
     updateSelected({ rules: selected.rules.map((r) => (r.id === ruleId ? next : r)) });
@@ -139,7 +152,20 @@ function App() {
               onClick={() => setSelectedId(p.id)}
             >
               <span class={`status-dot ${p.enabled ? "on" : "off"}`} />
-              {p.name}
+              <span class="profile-item-name">{p.name}</span>
+              <div class="row-actions">
+                <button
+                  type="button"
+                  title="Delete"
+                  class="btn-icon-sm btn-danger"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteProfile(p.id);
+                  }}
+                >
+                  ×
+                </button>
+              </div>
             </div>
           ))}
           <button type="button" class="btn-dashed" onClick={addProfile}>
