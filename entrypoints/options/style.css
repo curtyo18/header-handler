@@ -200,6 +200,22 @@ textarea {
   flex: none;
 }
 
+.profile-item-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-item .row-actions {
+  opacity: 0;
+}
+
+.profile-item:hover .row-actions,
+.profile-item.selected .row-actions {
+  opacity: 1;
+}
+
 .status-dot.on {
   background: var(--success);
 }
