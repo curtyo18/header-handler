@@ -101,22 +101,22 @@ function App() {
       <footer class="popup-footer">
         <button
           type="button"
-          class="btn btn-outline-accent btn-full"
+          class="btn btn-accent btn-full"
+          onClick={() => chrome.runtime.openOptionsPage()}
+        >
+          <span class="icon">⚙</span> Manage profiles & rules
+        </button>
+        <button
+          type="button"
+          class="btn btn-icon"
+          title="Open live log"
           onClick={async () => {
             const win = await chrome.windows.getCurrent();
             if (win.id != null) await chrome.sidePanel.open({ windowId: win.id });
             window.close();
           }}
         >
-          <span class="icon">📋</span> Open live log
-        </button>
-        <button
-          type="button"
-          class="btn btn-icon"
-          title="Options"
-          onClick={() => chrome.runtime.openOptionsPage()}
-        >
-          ⚙
+          📋
         </button>
       </footer>
     </div>
