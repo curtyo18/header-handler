@@ -5,6 +5,12 @@ import { isMatchMode } from "./matcher";
 const PREFIX = "HH";
 const VERSION = "1";
 
+// Field offsets derived from the layout PREFIX + VERSION + kind(1 char) + body,
+// not hardcoded, so the format can evolve without off-by-one bugs (issue #10).
+const VERSION_AT = PREFIX.length;
+const KIND_AT = VERSION_AT + VERSION.length;
+const BODY_AT = KIND_AT + 1;
+
 // decodeShare parses arbitrary pasted input, so nothing about its shape can be
 // trusted. Validate before returning: an unknown matcher mode compiles to a
 // match-all condition (global header injection), and a missing `rules`/`matcher`
@@ -58,10 +64,10 @@ export function encodeShare(input: EncodeInput): string {
 
 export function decodeShare(s: string): DecodeOutput {
   if (!s.startsWith(PREFIX)) throw new Error("Unrecognized share format");
-  const version = s[2];
+  const version = s[VERSION_AT];
   if (version !== VERSION) throw new Error(`Unsupported share version: ${version}`);
-  const kind = s[3];
-  const body = s.slice(4);
+  const kind = s[KIND_AT];
+  const body = s.slice(BODY_AT);
   const json = LZString.decompressFromEncodedURIComponent(body);
   if (!json) throw new Error("Corrupt share string");
   const parsed = JSON.parse(json);

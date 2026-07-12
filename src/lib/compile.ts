@@ -63,6 +63,17 @@ export function compileRules(cfg: Config): chrome.declarativeNetRequest.Rule[] {
   return rules;
 }
 
+// Key-order-stable serialization for content comparison: getDynamicRules() may
+// return object keys in a different order than freshly-built rules, and plain
+// JSON.stringify is order-sensitive — that would mark every rule "changed" and
+// churn a full remove+re-add each recompile (issue #10).
+function stableStringify(v: unknown): string {
+  if (v === null || typeof v !== "object") return JSON.stringify(v) ?? "null";
+  if (Array.isArray(v)) return "[" + v.map(stableStringify).join(",") + "]";
+  const o = v as Record<string, unknown>;
+  return "{" + Object.keys(o).sort().map((k) => JSON.stringify(k) + ":" + stableStringify(o[k])).join(",") + "}";
+}
+
 export function diffRules(
   current: chrome.declarativeNetRequest.Rule[],
   next: chrome.declarativeNetRequest.Rule[],
@@ -74,7 +85,7 @@ export function diffRules(
   // Compare content, not just id membership, or a changed rule silently never reaches DNR.
   const addRules = next.filter((r) => {
     const cur = curById.get(r.id);
-    return !cur || JSON.stringify(cur) !== JSON.stringify(r);
+    return !cur || stableStringify(cur) !== stableStringify(r);
   });
   const removeRuleIds = current
     .filter((r) => !nextIds.has(r.id) || addRules.some((a) => a.id === r.id))

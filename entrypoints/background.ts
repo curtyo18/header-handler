@@ -1,10 +1,21 @@
 import { configStore, logStore, dnrErrorStore, LOG_CAP, type LogEntry } from "../src/lib/storage";
 import { compileRules, diffRules, applyRulesWithFallback } from "../src/lib/compile";
 import { matchedRules, matchedProfileCount } from "../src/lib/matches";
+import type { Config } from "../src/types";
 
 export default defineBackground(() => {
+  // Cache the config in the worker: onSendHeaders fires per request under
+  // <all_urls>, so a chrome.storage.sync read there is a hot-path cost. The watch
+  // below keeps it current; an MV3 worker restart re-seeds on the next getConfig
+  // (issue #10). Registered before the recompile/badge watches so they read fresh.
+  let cachedConfig: Config | null = null;
+  async function getConfig(): Promise<Config> {
+    return (cachedConfig ??= await configStore.getValue());
+  }
+  configStore.watch((c) => { cachedConfig = c; });
+
   async function recompile() {
-    const cfg = await configStore.getValue();
+    const cfg = await getConfig();
     const next = compileRules(cfg);
     const current = await chrome.declarativeNetRequest.getDynamicRules();
     const { addRules, removeRuleIds } = diffRules(current, next);
@@ -41,7 +52,7 @@ export default defineBackground(() => {
 
   chrome.webRequest.onSendHeaders.addListener(
     async (details) => {
-      const cfg = await configStore.getValue();
+      const cfg = await getConfig();
       const matched = matchedRules(cfg, details.url);
       if (matched.length === 0) return;
       const entry: LogEntry = {
@@ -65,7 +76,7 @@ export default defineBackground(() => {
   // call here is wrapped the same way recompile() wraps its DNR call above.
   async function updateBadge(tabId: number, url: string | undefined) {
     try {
-      const cfg = await configStore.getValue();
+      const cfg = await getConfig();
       const count = url ? matchedProfileCount(cfg, url) : 0;
       await chrome.action.setBadgeText({ tabId, text: count > 0 ? String(count) : "" });
     } catch (e) {

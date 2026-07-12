@@ -1,14 +1,18 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { HeaderRule, Matcher } from "../../src/types";
-import { byteLength, formatJson, isLikelyJson, minifyJson, validateJson } from "../../src/lib/json-value";
+import { byteLength, formatJson, minifyJson, validateJson } from "../../src/lib/json-value";
 import { MatcherControl, regexError } from "./MatcherControl";
 import { highlightJson } from "./jsonHighlight";
 
 const JSON_WARN_BYTES = 8192 * 0.8;
 const COMMIT_DEBOUNCE_MS = 400;
 
-const looksLikeJson = (s: string) =>
-  isLikelyJson(s) || s.trim().startsWith("{") || s.trim().startsWith("[");
+// Structural gate for showing the JSON editor: isLikelyJson (parses AND starts
+// with {/[) is a strict subset of these two checks, so it was redundant.
+const looksLikeJson = (s: string) => {
+  const t = s.trim();
+  return t.startsWith("{") || t.startsWith("[");
+};
 
 // Rule is "invalid" (blocks commit) when its override matcher regex is broken,
 // or its value looks like JSON but fails to parse.

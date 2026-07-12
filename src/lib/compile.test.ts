@@ -134,4 +134,11 @@ describe("diffRules", () => {
     expect(addRules).toEqual([]);
     expect(removeRuleIds).toEqual([]);
   });
+  it("doesn't churn a rule that differs only in key order (getDynamicRules may reorder keys)", () => {
+    const current = [{ id: 1, priority: 1, condition: { urlFilter: "x.com" } }] as chrome.declarativeNetRequest.Rule[];
+    const next = [{ condition: { urlFilter: "x.com" }, id: 1, priority: 1 }] as unknown as chrome.declarativeNetRequest.Rule[];
+    const { addRules, removeRuleIds } = diffRules(current, next);
+    expect(addRules).toEqual([]);
+    expect(removeRuleIds).toEqual([]);
+  });
 });
