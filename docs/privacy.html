@@ -108,8 +108,11 @@
     This data is managed entirely by Chrome; Header Handler does not run its own
     server and cannot see this data outside your browser. (Chrome's synced storage
     caps a single item at 8&nbsp;KB, and the whole configuration is stored as one
-    item, so there is a practical limit on how much you can save; the options page
-    warns you as you approach it.)
+    item. Header Handler compresses the configuration before storing it, which
+    raises that effective limit, but there is still a practical ceiling on how much
+    you can save; the options page warns you as you approach it. Compression is a
+    storage-format detail only — the data stays in Chrome's synced storage and is
+    not sent anywhere.)
   </p>
 
   <h2>The live log and sensitive headers</h2>

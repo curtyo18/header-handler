@@ -1,9 +1,8 @@
 import { render } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { configStore, dnrErrorStore, SYNC_ITEM_QUOTA_BYTES, type DnrError } from "../../src/lib/storage";
+import { configStore, dnrErrorStore, SYNC_ITEM_QUOTA_BYTES, configStorageBytes, type DnrError } from "../../src/lib/storage";
 import type { Config, HeaderRule, Profile } from "../../src/types";
 import { encodeShare } from "../../src/lib/share";
-import { byteLength } from "../../src/lib/json-value";
 import { MatcherControl } from "./MatcherControl";
 import { HeaderRow } from "./HeaderRow";
 import { ImportModal } from "./ImportModal";
@@ -83,9 +82,10 @@ export function App() {
 
   const selected = cfg.profiles.find((p) => p.id === selectedId) ?? null;
 
-  // Warn against the whole-config serialized size (the real sync-item budget),
-  // not just a single header value — one item holds every profile (issue #5).
-  const configBytes = byteLength(JSON.stringify(cfg));
+  // Warn against the whole-config compressed size (the real sync-item budget),
+  // not just a single header value — one item holds every profile, stored
+  // compressed (issues #5, #12).
+  const configBytes = configStorageBytes(cfg);
   const nearQuota = !saveError && configBytes >= SYNC_ITEM_QUOTA_BYTES * 0.8;
 
   // Drive the save pill from the actual write, not a timer: a chrome.storage.sync
@@ -213,7 +213,7 @@ export function App() {
         <div class="size-banner" role="status">
           <span aria-hidden="true">⚠</span>
           <span>
-            This config is {configBytes.toLocaleString()} bytes, near Chrome's {SYNC_ITEM_QUOTA_BYTES.toLocaleString()}
+            This config compresses to {configBytes.toLocaleString()} bytes, near Chrome's {SYNC_ITEM_QUOTA_BYTES.toLocaleString()}
             -byte sync limit. Saves will start failing if it grows much larger.
           </span>
         </div>
