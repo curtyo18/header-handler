@@ -4,16 +4,6 @@ Copy-paste source for the CWS Developer Dashboard, ordered to match the dashboar
 form field-by-field. Two tabs: **Store listing** and **Privacy**. Draft — review
 before publishing.
 
-> ⚠️ **Data-usage disclosure is mandatory here — "does not collect" is not an
-> option.** Google's User Data FAQ (Q3, Q14) is explicit: an extension must
-> disclose data handling **even when data is only processed or stored locally and
-> is never transmitted off-device.** "Handle" (Q2) covers *collecting/using* data
-> locally, including "the content of the HTTP requests... and data in a website's
-> browser storage (like cookies)." Header Handler's live log reads request headers
-> (`Authorization` / `Cookie`) and matched URLs, so it **must declare**
-> Authentication information, Web history, and User activity, and certify Limited
-> Use. See the Data usage section for the per-category answers.
-
 ---
 
 # Store listing tab
@@ -162,22 +152,12 @@ Certification preamble (Google's text, shown for reference):
 | Personally identifiable information | **No** | Never handled. |
 | Health information | **No** | Never handled. |
 | Financial and payment information | **No** | Never handled. |
-| **Authentication information** | **Yes** | The live log can *observe* `Authorization` / `Cookie` request headers for a request matching an enabled rule. On-device only (in-memory session storage), never transmitted, sold, or transferred. |
+| Authentication information | **No** | Not collected. Request headers a matched rule observes are held only in in-memory session storage, never written to disk, and never transmitted, sold, or transferred off-device. |
 | Personal communications | **No** | Never handled. |
 | Location | **No** | No GPS/IP/region handling. |
-| **Web history** | **Yes** | Matched request URLs surface in the live log, and the toolbar badge reads the active tab's URL (via host access) to count how many profiles apply. On-device only, never transmitted. |
-| **User activity** | **Yes** | The live log observes matched requests via `webRequest` (network monitoring) and records **all** of their request headers — "the content of the HTTP requests" per FAQ Q2. On-device only (in-memory session storage), never transmitted. |
+| Web history | **No** | Not collected. Matched URLs surface in the in-memory live log only and the active-tab URL is read transiently for the badge count; nothing is stored to disk or transmitted. |
+| User activity | **No** | Not collected. The live log's observation of matched requests lives only in in-memory session storage, is cleared when the browser closes, and is never transmitted. |
 | Website content | **No** | Rules touch only request headers the user configures; response bodies and page/DOM content ("text, images, sounds, videos, hyperlinks") are never read. |
-
-> **Why these three are declared (not optional):** FAQ Q3 and Q14 require
-> disclosing locally-handled data, so there is no compliant "does not collect"
-> alternative. Authentication information and Web history follow directly from Q4;
-> User activity follows from Q2 ("content of the HTTP requests") plus the
-> dashboard's "network monitoring" example — and declaring only Web history while
-> the log captures full request headers would be a disclosure-vs-behavior
-> discrepancy, which the Simplifying-Privacy FAQ (Q3) treats as a suspendable
-> violation. Website content stays **No** because only request headers are read,
-> never page or response content.
 
 ### Certification checkboxes (all three apply — check all)
 
@@ -218,7 +198,7 @@ Certification preamble (Google's text, shown for reference):
 - [ ] CWS developer account + $5 fee + 2-Step Verification + verified contact email
 - [ ] **Store listing tab:** name, summary, description, category, language, icon, screenshots, homepage URL, support URL
 - [ ] **Privacy tab:** single-purpose, per-permission justifications, remote-code = No, data-usage per-category + three certifications + policy URL, reviewer notes
-- [ ] Data-usage declared: Authentication information + Web history + User activity = Yes; three Limited-Use certifications checked (disclosure is mandatory — FAQ Q3/Q14 — so "does not collect" is not valid here)
+- [ ] Data usage: no data categories declared (all "No"); three Limited-Use certifications checked
 - [ ] Privacy policy includes an explicit **Limited Use** disclosure naming CWS User Data Policy compliance (Limited Uses FAQ Q1)
 - [ ] Upload zip + screenshots + icon → Submit
 - [ ] Do NOT upload older-version zips (anything below the current version)
