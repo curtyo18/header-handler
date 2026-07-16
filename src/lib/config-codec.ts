@@ -69,11 +69,12 @@ export function deserializeConfig(raw: unknown): Config {
   return emptyConfig();
 }
 
-// Bytes the config occupies against the per-item quota, measured on the compressed
-// stored value (what Chrome actually counts) — this is what the Options warning
-// budgets against, not the raw JSON length.
+// Bytes the config's compressed payload occupies — what the Options near-quota UI
+// budgets against CONFIG_SOFT_CAP_BYTES. Measured on the compressed blob (the
+// thing that gets stored / sliced), not the raw JSON. Chunk key + JSON-quote
+// overhead is small relative to the soft cap's headroom and is not counted.
 export function configStorageBytes(cfg: Config): number {
-  return byteLength(JSON.stringify(serializeConfig(cfg)));
+  return byteLength(serializeConfig(cfg));
 }
 
 // Fast non-cryptographic string hash (cyrb53). For torn-read / corruption
