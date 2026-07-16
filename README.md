@@ -47,6 +47,8 @@ The log is session-only, held in memory, and never persisted or transmitted anyw
 
 Export a single profile or your whole config as a compressed, URL-safe string prefixed `HH1p…` (single profile) or `HH1g…` (all profiles). Paste it into another browser via Import to install the same set. Local ids are stripped on export and regenerated on import. See [`docs/adr/0002-versioned-lzstring-share-format.md`](docs/adr/0002-versioned-lzstring-share-format.md) for the format's versioning guarantee.
 
+**Coming from ModHeader?** The [ModHeader converter](https://curtyo18.github.io/header-handler/convert/) turns a ModHeader JSON export into a Header Handler share string, entirely in your browser. Imported profiles arrive disabled so you can review their scope before enabling them.
+
 ### Storage
 
 Profiles and the master on/off switch persist via `chrome.storage.sync` (so they follow you across signed-in Chrome instances, like bookmarks). Note that `sync` enforces an **8 KB-per-item** quota, and the whole config is stored as one item. The config is **compressed at rest** with LZString before it's written, which raises the effective ceiling roughly 2–3× for typical (repetitive) configs while keeping cross-device sync — see [`docs/adr/0003-compressed-config-at-rest.md`](docs/adr/0003-compressed-config-at-rest.md). There's still a practical ceiling on how many profiles/rules (and how large a JSON header value) you can save; Options warns as the *compressed* size approaches the limit and shows a "Save failed" state if a write is rejected, rather than silently dropping it. The live log uses `chrome.storage.session` and is cleared when the browser closes, or manually via the Clear button.
