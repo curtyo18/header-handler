@@ -1,0 +1,38 @@
+name: CI
+
+"on":
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: |
+          # Node 22 ships npm 10, which hard-errors (EBADPLATFORM) on lightningcss's
+          # platform-gated optional deps being mis-recorded as non-optional in the
+          # lockfile (npm/cli#7834). npm 11 tolerates it. Upgrade before `npm ci`.
+          npm install -g npm@11
+          npm ci
+
+      - name: Test
+        run: npm test
+
+      - name: Build extension
+        run: npm run build
+
+      - name: Build converter page
+        run: npm run build:pages
