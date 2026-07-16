@@ -28,6 +28,9 @@ jobs:
           npm install -g npm@11
           npm ci
 
+      - name: Prepare WXT (generates .wxt/tsconfig.json that tsconfig.json extends)
+        run: npx wxt prepare
+
       - name: Test
         run: npm test
 
