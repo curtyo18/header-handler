@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Header Handler — ModHeader Converter</title>
+  <script type="module" crossorigin src="./assets/index-bzdzi6Kv.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-ClimC5rJ.css">
+</head>
+<body>
+  <main class="wrap">
+    <h1>ModHeader → Header Handler</h1>
+    <p class="lead">
+      Paste a ModHeader export below to get a Header Handler share string. It runs
+      entirely in your browser — nothing is uploaded. Then open Header Handler's
+      options page, click <strong>Import</strong>, and paste the result.
+    </p>
+
+    <label class="field-label" for="input">ModHeader JSON export</label>
+    <textarea id="input" class="io" placeholder='{"version":2,"profiles":[…]}'></textarea>
+
+    <div class="actions">
+      <button id="convert" type="button" class="btn">Convert</button>
+    </div>
+
+    <p id="error" class="error" hidden></p>
+
+    <section id="result" hidden>
+      <p id="summary" class="summary"></p>
+
+      <label class="field-label" for="output">Header Handler share string</label>
+      <textarea id="output" class="io" readonly></textarea>
+      <div class="actions">
+        <button id="copy" type="button" class="btn">Copy</button>
+        <span id="copied" class="copied" hidden>Copied</span>
+      </div>
+
+      <ul id="warnings" class="warnings"></ul>
+    </section>
+  </main>
+</body>
+</html>
