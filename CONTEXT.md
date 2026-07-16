@@ -13,3 +13,6 @@ Canonical domain terms. Term → meaning only; no implementation detail.
 - **Single-profile share** — A share string carrying exactly one profile.
 - **Global share** — A share string carrying every profile (a backup/transfer of the full config).
 - **Compiled rule** — A `chrome.declarativeNetRequest` dynamic rule generated from the config; the runtime artifact that actually rewrites headers.
+- **Single-item config** — A config small enough to store as one `chrome.storage.sync` item (the pre-chunking layout, still used whenever it fits).
+- **Config chunk** — One slice of the compressed config blob, stored as its own `chrome.storage.sync` item when the whole config exceeds a single item's quota.
+- **Chunk manifest** — The `sync:config` item that, for a chunked config, records how many chunks compose it and a check value a reader validates for a complete, untorn read before reassembling.
