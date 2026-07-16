@@ -82,15 +82,15 @@ export function App() {
 
   const selected = cfg.profiles.find((p) => p.id === selectedId) ?? null;
 
-  // Warn against the whole-config compressed size (the real sync-item budget),
-  // not just a single header value — one item holds every profile, stored
-  // compressed (issues #5, #12).
+  // Warn against the whole-config compressed size (the real sync budget), not just
+  // a single header value — a large config spans a manifest plus chunk items across
+  // the total sync quota, not one item (ADR-0005; issues #5, #12).
   const configBytes = configStorageBytes(cfg);
   const nearQuota = !saveError && configBytes >= CONFIG_SOFT_CAP_BYTES * 0.8;
 
   // Drive the save pill from the actual write, not a timer: a chrome.storage.sync
-  // write that exceeds the 8 KB item quota rejects, and the UI must show that
-  // failure instead of settling to "Saved" regardless (issue #5).
+  // write past the ~84 KB soft cap rejects, and the UI must show that failure
+  // instead of settling to "Saved" regardless (issue #5).
   function update(next: Config) {
     setCfg(next);
     setSaving(true);

@@ -44,7 +44,7 @@ vi.mock("wxt/storage", () => ({
 
 // Import AFTER the mock is registered.
 import { configStore } from "./storage";
-import { serializeConfig, parseManifest, MAX_CONFIG_CHUNKS } from "./config-codec";
+import { serializeConfig, parseManifest } from "./config-codec";
 
 function bigConfig(profileCount: number): Config {
   return {
@@ -132,6 +132,16 @@ describe("configStore chunking", () => {
     await Promise.all([p1, p2]);
     expect(await configStore.getValue()).toEqual(b);
   });
-});
 
-void MAX_CONFIG_CHUNKS;
+  it("notifies a watcher with the fully reassembled config when a chunked write lands", async () => {
+    const seen: Config[] = [];
+    const unwatch = configStore.watch((c) => seen.push(c));
+    const cfg = bigConfig(60);
+    await saveNow(cfg);
+    // The watcher fires on the manifest write (sync:config); it must re-read and
+    // reassemble the chunks, not hand back the raw manifest string.
+    await vi.waitFor(() => expect(seen.length).toBeGreaterThan(0));
+    expect(seen[seen.length - 1]).toEqual(cfg);
+    unwatch();
+  });
+});

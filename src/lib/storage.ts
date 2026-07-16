@@ -77,12 +77,19 @@ async function writeConfig(cfg: Config): Promise<void> {
 const WRITE_DEBOUNCE_MS = 500;
 let pending: { cfg: Config; resolve: () => void; reject: (e: unknown) => void }[] = [];
 let flushTimer: ReturnType<typeof setTimeout> | undefined;
+// Serializes flushes: each write runs only after the previous one has settled, so
+// two multi-item writes never interleave (an interleaving could land a manifest
+// pointing at chunks a later write already deleted → torn read → silent reset).
+let writeChain: Promise<void> = Promise.resolve();
 
 function flush() {
   const batch = pending;
   pending = [];
   flushTimer = undefined;
-  writeConfig(batch[batch.length - 1].cfg).then(
+  const cfg = batch[batch.length - 1].cfg;
+  const run = writeChain.catch(() => {}).then(() => writeConfig(cfg));
+  writeChain = run.catch(() => {}); // next flush waits for this write to settle, success or fail
+  run.then(
     () => batch.forEach((p) => p.resolve()),
     (e) => batch.forEach((p) => p.reject(e)),
   );

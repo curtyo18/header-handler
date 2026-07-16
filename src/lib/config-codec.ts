@@ -93,10 +93,12 @@ export function checksum(s: string): number {
 }
 
 // The per-item quota counts the real chrome key length + JSON.stringify(value).
-// sync:config's chrome key is "config" (6 bytes); the blob is ASCII so JSON adds
-// exactly 2 quote bytes and no escapes.
+// sync:config's chrome key is "config"; the blob is ASCII so JSON adds exactly two
+// quote bytes and no escapes.
+const CONFIG_KEY_BYTES = 6; // length of the chrome key "config"
+const JSON_QUOTE_BYTES = 2; // the surrounding quotes JSON.stringify adds to a string
 function fitsOneItem(blob: string): boolean {
-  return 6 + byteLength(blob) + 2 <= SYNC_ITEM_QUOTA_BYTES;
+  return CONFIG_KEY_BYTES + byteLength(blob) + JSON_QUOTE_BYTES <= SYNC_ITEM_QUOTA_BYTES;
 }
 
 // Decide the on-disk layout for a serialized HHC1… blob. Throws a quota-flavoured
@@ -120,12 +122,23 @@ export function planStorage(blob: string):
 }
 
 // Parse a manifest value, or null if it isn't one (single-item HHC1…, legacy
-// object, junk, null). A well-formed manifest has numeric n / len / sum.
+// object, junk, null). A well-formed manifest has a chunk count within the same
+// [0, MAX_CONFIG_CHUNKS] bound the writer enforces and non-negative len/sum — so a
+// corrupt or hostile manifest (e.g. a huge n from a buggy peer) can't drive the
+// reader into an enormous chunk-key allocation before validation rejects it.
 export function parseManifest(value: unknown): Manifest | null {
   if (typeof value !== "string" || !value.startsWith(MANIFEST_MARKER)) return null;
   try {
     const m = JSON.parse(value.slice(MANIFEST_MARKER.length)) as Partial<Manifest>;
-    if (typeof m?.n === "number" && typeof m.len === "number" && typeof m.sum === "number") {
+    if (
+      typeof m?.n === "number" &&
+      Number.isInteger(m.n) &&
+      m.n >= 0 &&
+      m.n <= MAX_CONFIG_CHUNKS &&
+      typeof m.len === "number" &&
+      m.len >= 0 &&
+      typeof m.sum === "number"
+    ) {
       return { n: m.n, len: m.len, sum: m.sum };
     }
   } catch {

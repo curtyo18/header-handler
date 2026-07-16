@@ -126,6 +126,15 @@ describe("chunked storage (ADR-0005)", () => {
     expect(parseManifest("HHM1{not json")).toBeNull();
   });
 
+  it("parseManifest rejects a manifest whose chunk count is out of bounds", () => {
+    // A hostile/corrupt n must not drive the reader into a huge chunk-key allocation.
+    expect(parseManifest('HHM1{"n":1000000000,"len":0,"sum":0}')).toBeNull();
+    expect(parseManifest(`HHM1{"n":${MAX_CONFIG_CHUNKS + 1},"len":0,"sum":0}`)).toBeNull();
+    expect(parseManifest('HHM1{"n":-1,"len":0,"sum":0}')).toBeNull();
+    expect(parseManifest('HHM1{"n":1.5,"len":0,"sum":0}')).toBeNull();
+    expect(parseManifest('HHM1{"n":1,"len":-1,"sum":0}')).toBeNull();
+  });
+
   it("round-trips a large config through plan -> reassemble", () => {
     const cfg = bigConfig(60);
     const plan = planStorage(serializeConfig(cfg));
