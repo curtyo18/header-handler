@@ -5,6 +5,20 @@ export interface ConvertResult {
   warnings: string[];
 }
 
+// ModHeader writes full-match regexes, so a "contains X" URL filter arrives as
+// ".*X.*". Chrome DNR's regexFilter is a *partial* match (as is the live-log's
+// RegExp.test), so a leading/trailing ".*" is redundant — and several of them
+// across an OR-alternation blow past RE2's per-regex memory budget, which Chrome
+// rejects as "too large for Chrome's regex engine". Strip one redundant leading
+// ".*" (with an optional preceding "^") and one trailing ".*" (with an optional
+// following "$") so the compiled regex stays small while matching the same URLs.
+// Internal ".*" is left intact. Never returns empty: a filter that is only a
+// bounding wildcard (e.g. ".*") keeps its original value.
+function stripBoundingWildcards(re: string): string {
+  const stripped = re.replace(/^\^?\.\*/, "").replace(/\.\*\$?$/, "");
+  return stripped === "" ? re : stripped;
+}
+
 interface MhHeader {
   name?: unknown;
   value?: unknown;
@@ -53,9 +67,14 @@ export function convertModHeader(raw: unknown): ConvertResult {
       matcher = { mode: "regex", value: ".*" };
       warnings.push(`Profile "${name}": no active URL filter → matches all URLs (imported disabled).`);
     } else if (active.length === 1) {
-      matcher = { mode: "regex", value: active[0].urlRegex as string };
+      matcher = { mode: "regex", value: stripBoundingWildcards(active[0].urlRegex as string) };
     } else {
-      matcher = { mode: "regex", value: active.map((f) => `(${f.urlRegex as string})`).join("|") };
+      // Non-capturing groups keep each filter's precedence without the submatch
+      // cost of capturing groups; stripping the bounding ".*" keeps RE2 within budget.
+      matcher = {
+        mode: "regex",
+        value: active.map((f) => `(?:${stripBoundingWildcards(f.urlRegex as string)})`).join("|"),
+      };
     }
     if (active.some((f) => Array.isArray(f.methods) && f.methods.length > 0)) {
       warnings.push(`Profile "${name}": HTTP-method filter dropped (not supported) — rule applies to all methods.`);
