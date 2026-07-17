@@ -44,7 +44,7 @@ vi.mock("wxt/storage", () => ({
 
 // Import AFTER the mock is registered.
 import { configStore } from "./storage";
-import { serializeConfig, parseManifest } from "./config-codec";
+import { serializeConfig, parseManifest, planStorage } from "./config-codec";
 
 function bigConfig(profileCount: number): Config {
   return {
@@ -143,5 +143,23 @@ describe("configStore chunking", () => {
     await vi.waitFor(() => expect(seen.length).toBeGreaterThan(0));
     expect(seen[seen.length - 1]).toEqual(cfg);
     unwatch();
+  });
+
+  it("skips a torn cross-key sync in the watcher instead of delivering a false empty", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    await saveNow(bigConfig(60)); // a good chunked config is present
+    const seen: Config[] = [];
+    const unwatch = configStore.watch((c) => seen.push(c));
+    // A remote device's chunked save whose manifest propagates before its chunks:
+    // write a fresh (different) manifest but withhold its chunks. readConfig then
+    // reassembles the stale/absent chunks under the new manifest → torn → empty.
+    const plan = planStorage(serializeConfig(bigConfig(80)));
+    if (plan.kind !== "chunked") throw new Error("expected chunked");
+    const { storage } = await import("wxt/storage");
+    await storage.setItems([{ key: "sync:config", value: plan.manifest }]);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(seen).toHaveLength(0); // the false empty was skipped, not delivered
+    unwatch();
+    warn.mockRestore();
   });
 });

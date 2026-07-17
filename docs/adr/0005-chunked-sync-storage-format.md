@@ -86,5 +86,22 @@ separable, load-bearing decision recorded in ADR-0006.
 - Chunk values are opaque slices in DevTools — a minor debuggability cost, already
   true of the compressed single item.
 - The manifest is written non-atomically after its chunks; within a single device
-  writes complete before reads, and the `len`+`sum` check plus manifest-last
-  ordering make a torn read fall back safely rather than parse as real.
+  writes complete before reads, and the `len`+`sum` check plus manifest-after-chunks
+  ordering (chunks → manifest → GC orphans) make a torn read fall back safely rather
+  than parse as real. GC runs after the manifest so a crash before GC leaves only
+  unreferenced orphan chunks (swept on the next write), never a manifest pointing at
+  deleted chunks.
+- **Accepted residual — in-place chunk overwrite on growth.** Chunk slots
+  `config/0..n-1` are reused and overwritten in place across generations rather than
+  written under generation-suffixed keys. A save that *grows* the chunk count
+  therefore has a sub-millisecond window (a hard process kill between the chunk write
+  and the manifest write) in which the still-old manifest references slots now
+  holding new bytes → a torn read → empty config until the next successful save.
+  Single-device and hard-crash-only; deliberately accepted over generation-suffixed
+  keys, which would fully close it and remain a future option if the risk proves real.
+- **Torn-read guard on the cross-device watcher.** Because sync propagates keys
+  independently, a remote chunked save can deliver its manifest before its chunks; the
+  watcher would then reassemble to a false empty. Since an empty config is never stored
+  as a manifest, the watcher treats "manifest present + empty reassembly" as a
+  transient torn read and skips it rather than delivering an empty a later edit could
+  persist over the good config (see ADR-0006).

@@ -61,13 +61,18 @@ async function writeConfig(cfg: Config): Promise<void> {
     if (existing.length > 0) await storage.removeItems(existing);
     return;
   }
-  // Chunked: write chunks first, GC surplus, then the manifest LAST so a reader
-  // never sees a manifest pointing past the chunks that exist for it.
+  // Chunked: write chunks, then the manifest, then GC orphans. Manifest-after-chunks
+  // means a reader never sees a manifest referencing a chunk not yet written.
+  // GC-after-manifest means a crash before GC leaves only unreferenced orphan chunks
+  // (harmless — the next write's existingChunkKeys() sweeps them) rather than a
+  // manifest pointing at already-deleted chunks (which would read as a torn/empty
+  // config until the next successful save). This mirrors the single-item path above,
+  // which also writes the authoritative value before removing the old chunks.
   await storage.setItems(plan.chunks.map((value, i) => ({ key: chunkKey(i), value })));
+  await rawConfigStore.setValue(plan.manifest);
   const needed = new Set(chunkKeys(0, plan.chunks.length));
   const orphans = existing.filter((k) => !needed.has(k));
   if (orphans.length > 0) await storage.removeItems(orphans);
-  await rawConfigStore.setValue(plan.manifest);
 }
 
 // Coalesce a burst of edits into one write: keep only the latest Config, flush on
@@ -107,8 +112,20 @@ export const configStore = {
   getValue: readConfig,
   setValue: coalesceWrite,
   watch: (cb: (cfg: Config) => void): (() => void) =>
-    rawConfigStore.watch(() => {
-      void readConfig().then(cb);
+    rawConfigStore.watch((raw) => {
+      void readConfig().then((cfg) => {
+        // Guard against a torn cross-key sync: chrome.storage.sync propagates keys
+        // independently with no ordering, so a remote device's chunked save can
+        // deliver its manifest before its chunks. The watch fires on the manifest
+        // key, readConfig reassembles with chunks still missing → emptyConfig(), and
+        // the chunk keys aren't watched so no later event re-fires. An empty config
+        // is never stored as a manifest (it fits one item), so "manifest present +
+        // empty reassembly" is unambiguously that transient torn read — skip it
+        // rather than deliver a false empty a subsequent edit could persist over the
+        // good config (ADR-0006). A reload or the next manifest write reads cleanly.
+        if (cfg.profiles.length === 0 && parseManifest(raw)) return;
+        cb(cfg);
+      });
     }),
 };
 
