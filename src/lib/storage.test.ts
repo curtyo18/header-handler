@@ -163,3 +163,89 @@ describe("configStore chunking", () => {
     warn.mockRestore();
   });
 });
+
+describe("upgrade / migration from the single-item format", () => {
+  beforeEach(() => {
+    mem.clear();
+    watchers.clear();
+    vi.useFakeTimers();
+  });
+  afterEach(() => vi.useRealTimers());
+
+  // Produced by the shipped single-item serializer (serializeConfig) for
+  // GOLDEN_CONFIG below. Hardcoded so a future serialization change can't
+  // silently break reading configs already synced by older clients.
+  const GOLDEN_HHC1 =
+    "HHC1N4IgbgpgTgzglgewHYgFwEYA0IC2BDGAF2gFEk8AjAGwgBM1CoBXCbABygQDM4aY0A2qDj1UINuhDZyOCGhABBJoQAWUkBHLU6DZq1x5CAYxXQ0oHAlpyxR5ITxwk-bGDxUW8iAA88ONjQAdHY4IAC+2Mx8gsKiIFCS2JqUNKKMLNgIbPIwEITqMjYgABoAtAAqCADWmupuHkWURugATADM4QC6Yd1AA";
+  const GOLDEN_CONFIG: Config = {
+    version: 1,
+    masterEnabled: true,
+    profiles: [
+      {
+        id: "p1",
+        name: "Auth",
+        enabled: true,
+        matcher: { mode: "contains", value: "example.com" },
+        rules: [{ id: "r1", enabled: true, op: "set", name: "X-Token", value: "abc123" }],
+      },
+    ],
+  };
+
+  it("reads a golden pre-recorded HHC1 single-item blob byte-for-byte", async () => {
+    mem.set("sync:config", GOLDEN_HHC1);
+    expect(await configStore.getValue()).toEqual(GOLDEN_CONFIG);
+  });
+
+  it("reads a legacy v1.1.0 raw-object config (written before compression)", async () => {
+    const legacyObject: Config = {
+      version: 1,
+      masterEnabled: false,
+      profiles: [
+        {
+          id: "legacy1",
+          name: "Legacy",
+          enabled: true,
+          matcher: { mode: "exact", value: "old.example.com" },
+          rules: [{ id: "lr1", enabled: false, op: "remove", name: "X-Old" }],
+        },
+      ],
+    };
+    mem.set("sync:config", legacyObject);
+    expect(await configStore.getValue()).toEqual(legacyObject);
+  });
+
+  it("returns emptyConfig() on a fresh install with no stored value", async () => {
+    expect(await configStore.getValue()).toEqual(emptyConfig());
+  });
+
+  it("upgrades a pre-existing single-item config to chunked on first big write, without loss", async () => {
+    mem.set("sync:config", GOLDEN_HHC1);
+    expect(await configStore.getValue()).toEqual(GOLDEN_CONFIG);
+    expect(mem.has("sync:config/0")).toBe(false);
+
+    await saveNow(bigConfig(60));
+
+    const manifest = parseManifest(mem.get("sync:config"));
+    expect(manifest).not.toBeNull();
+    expect(manifest!.n).toBeGreaterThan(1);
+    expect(mem.has(`sync:config/${manifest!.n - 1}`)).toBe(true);
+    expect(await configStore.getValue()).toEqual(bigConfig(60));
+  });
+
+  it("upgrades a legacy raw-object config to chunked on first big write, without loss", async () => {
+    const legacySmall: Config = {
+      version: 1,
+      masterEnabled: true,
+      profiles: [{ id: "s1", name: "Small", enabled: true, matcher: { mode: "contains", value: "x" }, rules: [] }],
+    };
+    mem.set("sync:config", legacySmall);
+    expect(await configStore.getValue()).toEqual(legacySmall);
+
+    await saveNow(bigConfig(60));
+
+    const manifest = parseManifest(mem.get("sync:config"));
+    expect(manifest).not.toBeNull();
+    expect(manifest!.n).toBeGreaterThan(1);
+    expect(await configStore.getValue()).toEqual(bigConfig(60));
+  });
+});
