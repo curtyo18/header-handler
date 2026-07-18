@@ -1,0 +1,85 @@
+name: Auto Release
+
+# Every push to main (i.e. every merge) cuts a release: bump the patch version,
+# build, tag, and publish a GitHub release. This is intentionally unconditional —
+# releasing is a CI guarantee, not something a human or agent has to remember. To
+# cut a minor/major instead, see docs/RELEASING.md (bump package.json with a
+# [skip ci] commit + a manual tag; the manual path lives in release.yml).
+"on":
+  push:
+    branches: [main]
+
+# Serialize runs so two merges landing close together can't compute the same
+# version or race on the push to main. Queue, never cancel — every merge must ship.
+concurrency:
+  group: auto-release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  auto-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: |
+          # Node 22 ships npm 10, which hard-errors (EBADPLATFORM) on lightningcss's
+          # platform-gated optional deps in the lockfile (npm/cli#7834). npm 11 tolerates
+          # it. Mirrors release.yml.
+          npm install -g npm@11
+          npm ci
+
+      - name: Bump patch version
+        id: bump
+        run: |
+          # --no-git-tag-version updates package.json (+ lockfile) only; we make the
+          # commit/tag ourselves so the message can carry [skip ci].
+          new="$(npm version patch --no-git-tag-version)"   # prints e.g. v1.3.1
+          echo "tag=${new}" >> "$GITHUB_OUTPUT"
+          echo "version=${new#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        run: npm run build
+
+      - name: Zip (Web Store format)
+        run: npm run zip
+
+      - name: Build folder-wrapped zip for unpacked installs
+        run: |
+          name="${GITHUB_REPOSITORY##*/}"
+          ver="${{ steps.bump.outputs.version }}"
+          mkdir -p .output/pack && rm -rf ".output/pack/$name"
+          cp -r .output/chrome-mv3 ".output/pack/$name"
+          ( cd .output/pack && zip -r "$GITHUB_WORKSPACE/${name}-${ver}.zip" "$name" )
+
+      - name: Commit bump, tag, and push
+        run: |
+          tag="${{ steps.bump.outputs.tag }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # [skip ci] so this bump commit doesn't re-trigger this workflow. (Pushes made
+          # with GITHUB_TOKEN also don't trigger workflows — belt and suspenders.)
+          git commit -am "Release ${tag} [skip ci]"
+          git tag -a "${tag}" -m "Release ${tag}"
+          git push origin HEAD:main
+          git push origin "${tag}"
+
+      - name: Publish GitHub release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${{ steps.bump.outputs.tag }}"
+          name="${GITHUB_REPOSITORY##*/}"
+          ver="${{ steps.bump.outputs.version }}"
+          gh release create "$tag" "${name}-${ver}.zip" .output/*-chrome.zip --generate-notes
