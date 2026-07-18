@@ -23,7 +23,7 @@ let currentConfig: Config;
 const setValue = vi.fn(() => Promise.reject(new Error("QUOTA_BYTES_PER_ITEM quota exceeded")));
 
 vi.mock("../../src/lib/storage", () => ({
-  SYNC_ITEM_QUOTA_BYTES: 8192,
+  CONFIG_SOFT_CAP_BYTES: 86016,
   configStorageBytes: () => 100, // well under quota; the near-quota banner is out of scope here
   configStore: {
     getValue: () => Promise.resolve(currentConfig),
@@ -55,7 +55,7 @@ describe("Options save-failure surfacing (#5)", () => {
     fireEvent.input(nameInput, { target: { value: "Auth 2" } });
 
     await waitFor(() => expect(screen.getByText("Save failed")).toBeTruthy());
-    expect(screen.getByText(/over Chrome's 8 KB sync-storage limit/i)).toBeTruthy();
+    expect(screen.getByText(/over Chrome's ~84 KB sync-storage budget/i)).toBeTruthy();
     expect(screen.queryByText("Saved")).toBeNull();
   });
 });

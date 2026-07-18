@@ -1,6 +1,6 @@
 import { render } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { configStore, dnrErrorStore, SYNC_ITEM_QUOTA_BYTES, configStorageBytes, type DnrError } from "../../src/lib/storage";
+import { configStore, dnrErrorStore, CONFIG_SOFT_CAP_BYTES, configStorageBytes, type DnrError } from "../../src/lib/storage";
 import type { Config, HeaderRule, Profile } from "../../src/types";
 import { encodeShare } from "../../src/lib/share";
 import { MatcherControl } from "./MatcherControl";
@@ -31,7 +31,7 @@ function newRule(): HeaderRule {
 function saveErrorMessage(e: unknown): string {
   const msg = e instanceof Error ? e.message : String(e);
   if (/quota/i.test(msg)) {
-    return "Config is too large to save — it's over Chrome's 8 KB sync-storage limit. Shrink or remove some rules or values, then edit again.";
+    return "Config is too large to sync — it's over Chrome's ~84 KB sync-storage budget. Remove some profiles or rules, then edit again.";
   }
   return `Couldn't save your changes: ${msg}`;
 }
@@ -82,15 +82,15 @@ export function App() {
 
   const selected = cfg.profiles.find((p) => p.id === selectedId) ?? null;
 
-  // Warn against the whole-config compressed size (the real sync-item budget),
-  // not just a single header value — one item holds every profile, stored
-  // compressed (issues #5, #12).
+  // Warn against the whole-config compressed size (the real sync budget), not just
+  // a single header value — a large config spans a manifest plus chunk items across
+  // the total sync quota, not one item (ADR-0005; issues #5, #12).
   const configBytes = configStorageBytes(cfg);
-  const nearQuota = !saveError && configBytes >= SYNC_ITEM_QUOTA_BYTES * 0.8;
+  const nearQuota = !saveError && configBytes >= CONFIG_SOFT_CAP_BYTES * 0.8;
 
   // Drive the save pill from the actual write, not a timer: a chrome.storage.sync
-  // write that exceeds the 8 KB item quota rejects, and the UI must show that
-  // failure instead of settling to "Saved" regardless (issue #5).
+  // write past the ~84 KB soft cap rejects, and the UI must show that failure
+  // instead of settling to "Saved" regardless (issue #5).
   function update(next: Config) {
     setCfg(next);
     setSaving(true);
@@ -213,8 +213,8 @@ export function App() {
         <div class="size-banner" role="status">
           <span aria-hidden="true">⚠</span>
           <span>
-            This config compresses to {configBytes.toLocaleString()} bytes, near Chrome's {SYNC_ITEM_QUOTA_BYTES.toLocaleString()}
-            -byte sync limit. Saves will start failing if it grows much larger.
+            This config uses {configBytes.toLocaleString()} of Chrome's {CONFIG_SOFT_CAP_BYTES.toLocaleString()}
+            -byte sync-storage budget. Saves will start failing if it grows much larger.
           </span>
         </div>
       )}
