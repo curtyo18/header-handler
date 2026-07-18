@@ -21,6 +21,15 @@ re-trigger the workflow (and `GITHUB_TOKEN` pushes don't trigger workflows eithe
 — two independent loop guards). Runs are serialized by a `concurrency` group so
 two quick merges can't collide on a version.
 
+> **Footgun — keep CI-skip tokens out of commit and PR messages.** GitHub scans
+> the *entire* merge-commit message and silently skips **all** workflows if it
+> finds a skip token (the bracketed `skip ci` / `ci skip` / `no ci` /
+> `skip actions` / `actions skip` forms). A PR that merely *describes* the
+> mechanism in its body — or a squash that inherits such a body — will not release.
+> Mention the token only in files (like this one), never in a commit/PR message.
+> This is a GitHub-platform behaviour; a workflow cannot run on a commit GitHub
+> chose to skip.
+
 ## Minor / major bump (rare, deliberate)
 
 Auto-release only ever bumps the **patch**. To jump the minor or major:
