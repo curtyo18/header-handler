@@ -31,4 +31,9 @@ release once the commits are in place.
 
 ## Version history
 
-Tags: `v0.1.0` … `v0.1.4`, `v1.0.0`, `v1.0.1`, …
+Tags: `v0.1.0` … `v0.1.4`, `v1.0.0` … `v1.0.3`, `v1.1.0`, `v1.2.0`, `v1.3.0`, …
+
+- `v1.3.0` — chunked `chrome.storage.sync` (raises the ~8 KB single-item config
+  ceiling to ~84 KB by splitting across items behind a manifest; see ADR-0005/0006)
+  + ModHeader converter regex fix (strip redundant `.*` so Chrome's RE2 engine
+  doesn't reject imported matchers as "too large").
