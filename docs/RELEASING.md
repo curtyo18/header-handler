@@ -1,37 +1,52 @@
 # Releasing
 
-Releases are **tag-driven**. Pushing a `v*` tag triggers
-[`.github/workflows/release.yml`](../.github/workflows/release.yml), which
-verifies the tag matches `package.json`, builds, zips, and publishes a GitHub
-release with the Web Store zip and an unpacked-install zip attached.
+**Releases are automatic. Every merge to `main` cuts a release.**
+[`.github/workflows/auto-release.yml`](../.github/workflows/auto-release.yml) runs on
+every push to `main`, bumps the **patch** version, builds, tags `v<version>`, and
+publishes a GitHub release with the Web Store zip and an unpacked-install zip
+attached.
 
-## Steps
+> For agents and humans: **do not** hand-cut a normal release — just merge to
+> `main` and CI ships it. There is no manual step to remember or forget. Bumping
+> the version yourself for a normal change is wrong; the workflow does it.
 
-1. **Bump the version** in `package.json` (this is the single source of truth —
-   WXT derives the extension `manifest.json` version from it, and CI hard-fails
-   if the tag doesn't equal `v<package.json version>`). Use semver: patch for
-   fixes/UI tweaks, minor for features, major for breaking changes.
-2. **Commit** the change(s) being released, including the version bump.
-3. **Tag** the release commit: `git tag v<version>` (e.g. `git tag v1.0.1`).
-4. **Push** the branch and the tag: `git push && git push origin v<version>`.
-5. **Watch** the `Release` workflow: `gh run watch` (or
-   `gh run list --workflow=release.yml`). On success, confirm the release:
-   `gh release view v<version>`.
+## Normal release (the only path you usually need)
 
-The publish step is idempotent — re-pushing the same tag re-uploads assets
-rather than erroring.
+1. Merge a PR (or push) to `main`.
+2. That's it. `auto-release.yml` bumps the patch, tags, and publishes. Watch it:
+   `gh run list --workflow=auto-release.yml` → `gh release view v<version>`.
 
-## Who runs the ship step
+The bump commit it makes back to `main` carries `[skip ci]`, so it doesn't
+re-trigger the workflow (and `GITHUB_TOKEN` pushes don't trigger workflows either
+— two independent loop guards). Runs are serialized by a `concurrency` group so
+two quick merges can't collide on a version.
 
-The mechanical **ship** step (tag → push → monitor CI → confirm release) is
-delegated to a **Sonnet** subagent. Preparation that needs judgment — the code
-change, the version-bump decision, the commit message, and any docs — stays on
-the primary (Opus) agent. Sonnet just executes the well-scoped, deterministic
-release once the commits are in place.
+## Minor / major bump (rare, deliberate)
+
+Auto-release only ever bumps the **patch**. To jump the minor or major:
+
+1. In a commit **with `[skip ci]` in the message** (so auto-release skips it), set
+   `package.json` to the target version — e.g. `1.4.0` — and push to `main`.
+2. Push a matching tag manually: `git tag -a v1.4.0 -m "Release v1.4.0" && git push origin v1.4.0`.
+   The tag-driven [`release.yml`](../.github/workflows/release.yml) builds and
+   publishes it (it hard-fails if the tag ≠ `v<package.json version>`).
+3. Subsequent merges auto-patch from there (`v1.4.1`, `v1.4.2`, …).
+
+`release.yml` is the manual escape hatch — use it for a minor/major, or to
+re-cut/repair a specific version. It is idempotent (re-pushing a tag re-uploads
+assets). `package.json` is the single source of truth for the version — WXT
+derives the extension `manifest.json` version from it.
+
+## What is NOT automated
+
+- **Chrome Web Store upload.** Both workflows publish a *GitHub* release only.
+  Shipping to users is still a manual upload of the `…-chrome.zip` to the CWS
+  dashboard, followed by CWS review.
 
 ## Version history
 
 Tags: `v0.1.0` … `v0.1.4`, `v1.0.0` … `v1.0.3`, `v1.1.0`, `v1.2.0`, `v1.3.0`, …
+(from `v1.3.x` on, patch versions are cut automatically per merge).
 
 - `v1.3.0` — chunked `chrome.storage.sync` (raises the ~8 KB single-item config
   ceiling to ~84 KB by splitting across items behind a manifest; see ADR-0005/0006)
