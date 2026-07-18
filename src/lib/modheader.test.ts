@@ -13,7 +13,9 @@ describe("convertModHeader", () => {
       version: 2,
       profiles: [{ title: "A", urlFilters: [{ enabled: true, urlRegex: ".*foo.*" }], headers: [] }],
     });
-    expect(config.profiles[0].matcher).toEqual({ mode: "regex", value: ".*foo.*" });
+    // DNR regexFilter is a partial match, so ModHeader's bounding ".*" is redundant
+    // and stripped to keep RE2 within its per-regex memory budget.
+    expect(config.profiles[0].matcher).toEqual({ mode: "regex", value: "foo" });
   });
 
   it("ORs multiple enabled urlFilters into one alternation regex", () => {
@@ -24,7 +26,44 @@ describe("convertModHeader", () => {
         headers: [],
       }],
     });
-    expect(config.profiles[0].matcher).toEqual({ mode: "regex", value: "(a)|(b)" });
+    expect(config.profiles[0].matcher).toEqual({ mode: "regex", value: "(?:a)|(?:b)" });
+  });
+
+  it("strips bounding wildcards and OR-joins with non-capturing groups (RE2 memory fix)", () => {
+    // The exact shape ModHeader produces for several 'contains' filters — the old
+    // output (.*X.*) wrapped in capturing groups exceeded Chrome's RE2 memory limit.
+    const { config } = convertModHeader({
+      profiles: [{
+        title: "Payments",
+        urlFilters: [
+          { enabled: true, urlRegex: ".*checkoutPayment\\.page.*" },
+          { enabled: true, urlRegex: ".*myaccount\\/payment\\.page.*" },
+          { enabled: true, urlRegex: ".*dcx-payments-.*" },
+          { enabled: true, urlRegex: ".*myaccount\\/makePayment\\.page.*" },
+        ],
+        headers: [],
+      }],
+    });
+    expect(config.profiles[0].matcher).toEqual({
+      mode: "regex",
+      value: "(?:checkoutPayment\\.page)|(?:myaccount\\/payment\\.page)|(?:dcx-payments-)|(?:myaccount\\/makePayment\\.page)",
+    });
+    // No leading ".*" on any alternative — that was the RE2 state blow-up.
+    expect(config.profiles[0].matcher.value).not.toContain(".*");
+  });
+
+  it("preserves an internal .* and an anchored form when stripping bounds", () => {
+    const { config } = convertModHeader({
+      profiles: [{ title: "A", urlFilters: [{ enabled: true, urlRegex: "^.*a.*b.*$" }], headers: [] }],
+    });
+    expect(config.profiles[0].matcher).toEqual({ mode: "regex", value: "a.*b" });
+  });
+
+  it("keeps a wildcard-only filter as-is rather than emptying it", () => {
+    const { config } = convertModHeader({
+      profiles: [{ title: "A", urlFilters: [{ enabled: true, urlRegex: ".*" }], headers: [] }],
+    });
+    expect(config.profiles[0].matcher).toEqual({ mode: "regex", value: ".*" });
   });
 
   it("ignores disabled urlFilters when building the matcher", () => {
@@ -116,7 +155,7 @@ describe("convertModHeader", () => {
       expect(decoded.profiles).toHaveLength(1);
       expect(decoded.profiles[0].name).toBe("A");
       expect(decoded.profiles[0].enabled).toBe(false);
-      expect(decoded.profiles[0].matcher).toEqual({ mode: "regex", value: ".*foo.*" });
+      expect(decoded.profiles[0].matcher).toEqual({ mode: "regex", value: "foo" });
       expect(decoded.profiles[0].rules[0].name).toBe("X-One");
     }
   });
