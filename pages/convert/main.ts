@@ -1,5 +1,6 @@
 import { convertModHeader } from "../../src/lib/modheader";
 import { encodeShare } from "../../src/lib/share";
+import { extractProfiles } from "./scan";
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
@@ -10,34 +11,107 @@ const resultEl = $<HTMLElement>("result");
 const summaryEl = $<HTMLParagraphElement>("summary");
 const warningsEl = $<HTMLUListElement>("warnings");
 const copiedEl = $<HTMLSpanElement>("copied");
+const scanNoteEl = $<HTMLParagraphElement>("scanNote");
 
+// ModHeader's Chrome extension id — its storage folder is named after it.
+const EXT_ID = "idgpnmonknjnojddfkpgkljpfnnfcklj";
+
+// ── OS-specific instructions ────────────────────────────────────────────────
+// macOS and Windows differ only in the storage path and modifier keys, so the
+// page carries both and shows one. Detection is a guess (userAgentData is
+// Chromium-only) and the reader may recover on a different machine, hence the
+// manual switch.
+// The browser's User Data root, not a guessed profile path: ModHeader's data can
+// live under Default OR Profile 1/2/… (one per Chrome profile), so we point users
+// at the root and have them search it for EXT_ID.
+const USER_DATA_PATH = {
+  mac: `~/Library/Application Support/Google/Chrome`,
+  win: `%LOCALAPPDATA%\\Google\\Chrome\\User Data`,
+} as const;
+
+// Where the command writes the dump — offered as a copy-able path so users can
+// paste it straight into the file-open dialog (macOS ⇧⌘G expands ~; the Windows
+// dialog expands %TEMP%). Windows uses %TEMP% not the Desktop: with OneDrive
+// "back up Desktop" on (the Win11 default) the real Desktop is under OneDrive and
+// $HOME\Desktop may not exist, so a Desktop write silently fails. %TEMP% always
+// resolves and is never cloud-synced.
+const DUMP_PATH = {
+  mac: `~/Desktop/modheader-dump.txt`,
+  win: `%TEMP%\\modheader-dump.txt`,
+} as const;
+
+function setOs(os: "mac" | "win") {
+  document.body.dataset.os = os;
+  $<HTMLButtonElement>("os-mac").setAttribute("aria-pressed", String(os === "mac"));
+  $<HTMLButtonElement>("os-win").setAttribute("aria-pressed", String(os === "win"));
+  $<HTMLElement>("path").textContent = USER_DATA_PATH[os];
+  $<HTMLElement>("dumppath").textContent = DUMP_PATH[os];
+}
+
+const uaPlatform =
+  (navigator as { userAgentData?: { platform?: string } }).userAgentData?.platform ?? navigator.platform ?? "";
+setOs(/mac/i.test(uaPlatform) ? "mac" : "win");
+$<HTMLButtonElement>("os-mac").addEventListener("click", () => setOs("mac"));
+$<HTMLButtonElement>("os-win").addEventListener("click", () => setOs("win"));
+
+// Commands that locate ModHeader's storage across Chrome/Edge/Brave and dump
+// every matching file's bytes to modheader-dump.txt (the Desktop on macOS, %TEMP%
+// on Windows) — read-only, the extension never executes. The page's scanner then
+// pulls profiles from the dump. Formatted over multiple lines (bash "\"
+// continuations; PowerShell trailing-pipe continuations) so a long one-liner
+// doesn't read as sketchy. Kept in JS so the extension id is single-sourced.
+const CMD = {
+  mac: [
+    `find ~/Library/Application\\ Support \\`,
+    `  -path '*${EXT_ID}*' -type f \\`,
+    `  -exec cat {} + 2>/dev/null \\`,
+    `  > ~/Desktop/modheader-dump.txt`,
+    `echo "Saved $(wc -c < ~/Desktop/modheader-dump.txt) bytes to ~/Desktop/modheader-dump.txt"`,
+  ].join("\n"),
+  win: [
+    `$id  = '${EXT_ID}'`,
+    `$out = Join-Path $env:TEMP 'modheader-dump.txt'`,
+    ``,
+    `Get-ChildItem $env:LOCALAPPDATA, $env:APPDATA -Recurse -Directory -Filter "*$id*" -EA SilentlyContinue |`,
+    `  ForEach-Object { Get-ChildItem $_.FullName -File -EA SilentlyContinue } |`,
+    `  ForEach-Object { try { [IO.File]::ReadAllText($_.FullName) } catch {} } |`,
+    `  Set-Content $out -Encoding UTF8`,
+    ``,
+    `"Saved $([int](Get-Item $out -EA SilentlyContinue).Length) bytes to $out"`,
+  ].join("\n"),
+} as const;
+$<HTMLElement>("cmd-mac").textContent = CMD.mac;
+$<HTMLElement>("cmd-win").textContent = CMD.win;
+
+// Every copy button carries data-copy="<id of the element whose text to copy>",
+// so one handler covers commands, paths and the extension id with consistent
+// "copied" feedback. writeText can reject (denied permission / insecure context);
+// swallow it rather than leave an unhandled rejection or a stuck label.
+const COPY_FEEDBACK_MS = 1200;
+for (const btn of document.querySelectorAll<HTMLButtonElement>("[data-copy]")) {
+  btn.addEventListener("click", async () => {
+    const target = document.getElementById(btn.dataset.copy!);
+    try {
+      await navigator.clipboard.writeText(target?.textContent ?? "");
+    } catch {
+      return;
+    }
+    const prev = btn.textContent;
+    btn.textContent = "copied";
+    setTimeout(() => (btn.textContent = prev), COPY_FEEDBACK_MS);
+  });
+}
+
+// ── Rendering ───────────────────────────────────────────────────────────────
 function showError(message: string) {
   errorEl.textContent = message;
   errorEl.hidden = false;
   resultEl.hidden = true;
 }
 
-function convert() {
+function render(config: import("../../src/types").Config, warnings: string[]) {
   errorEl.hidden = true;
   copiedEl.hidden = true;
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(input.value);
-  } catch (e) {
-    showError(`Not valid JSON: ${(e as Error).message}`);
-    return;
-  }
-
-  let result;
-  try {
-    result = convertModHeader(parsed);
-  } catch (e) {
-    showError((e as Error).message);
-    return;
-  }
-
-  const { config, warnings } = result;
   output.value = encodeShare({ kind: "g", config });
 
   const profileCount = config.profiles.length;
@@ -56,10 +130,188 @@ function convert() {
   );
 
   resultEl.hidden = false;
+  resultEl.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-$<HTMLButtonElement>("convert").addEventListener("click", convert);
+// Run any parsed ModHeader-shaped value through the converter and render it.
+function convertAndRender(parsed: unknown) {
+  try {
+    const { config, warnings } = convertModHeader(parsed);
+    render(config, warnings);
+  } catch (e) {
+    showError((e as Error).message);
+  }
+}
+
+// ── Inputs ──────────────────────────────────────────────────────────────────
+// Paste / .json path: try to parse the whole thing first so a clean export
+// keeps its top-level version etc.; fall back to scanning fragments out of it.
+function convertText(text: string) {
+  errorEl.hidden = true;
+  let parsed: unknown = null;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    /* not whole-file JSON — scan below */
+  }
+  if (parsed && Array.isArray((parsed as { profiles?: unknown }).profiles)) {
+    convertAndRender(parsed);
+    return;
+  }
+  const profiles = extractProfiles(text);
+  if (profiles.length === 0) {
+    showError("Couldn't find any ModHeader profiles in that. Paste the full export JSON, or use Option B.");
+    return;
+  }
+  convertAndRender({ version: 2, profiles });
+}
+
+$<HTMLButtonElement>("convert").addEventListener("click", () => convertText(input.value));
+
+async function loadJsonFile(file: File) {
+  try {
+    input.value = await file.text();
+  } catch (e) {
+    showError(`Could not read ${file.name}: ${(e as Error).message}`);
+    return;
+  }
+  convertText(input.value);
+}
+
+const jsonFileEl = $<HTMLInputElement>("jsonFile");
+$<HTMLButtonElement>("jsonPick").addEventListener("click", () => jsonFileEl.click());
+jsonFileEl.addEventListener("change", () => {
+  const file = jsonFileEl.files?.[0];
+  if (file) void loadJsonFile(file);
+  jsonFileEl.value = "";
+});
+
+// Folder / dump recovery: scan the dropped files in a worker so a large storage
+// dump (tens of MB of mostly binary) never freezes the page. LOCK is empty and
+// .ldb blocks may be Snappy-compressed (no plain JSON) — those contribute
+// nothing; recent writes in the uncompressed .log usually hit.
+type ScanMsg = { type: "progress"; scanned: number; total: number } | { type: "done"; profiles: unknown[] };
+
+// One scan at a time: a second drop/pick supersedes an in-flight one. Without
+// this, two workers race and whichever finishes last clobbers the result panel.
+let activeWorker: Worker | null = null;
+
+function recoverFromFiles(files: File[]) {
+  errorEl.hidden = true;
+  resultEl.hidden = true;
+  scanNoteEl.hidden = false;
+  scanNoteEl.textContent = `Scanning ${files.length} file${files.length === 1 ? "" : "s"}…`;
+
+  activeWorker?.terminate();
+  const worker = new Worker(new URL("./scanner.worker.ts", import.meta.url), { type: "module" });
+  activeWorker = worker;
+
+  worker.onmessage = (e: MessageEvent<ScanMsg>) => {
+    if (worker !== activeWorker) return; // superseded by a newer scan
+    const msg = e.data;
+    if (msg.type === "progress") {
+      scanNoteEl.textContent = `Scanning… (${msg.scanned}/${msg.total})`;
+      return;
+    }
+    worker.terminate();
+    activeWorker = null;
+    scanNoteEl.hidden = true;
+    if (msg.profiles.length === 0) {
+      showError(
+        "No ModHeader profiles found in that dump. If the command reported 0 bytes, fully quit the browser and " +
+          "re-run it. If it saved data but nothing surfaced here, the profiles may be in compressed storage — an " +
+          "export from another machine (Option A) is the fallback.",
+      );
+      return;
+    }
+    convertAndRender({ version: 2, profiles: msg.profiles });
+  };
+  worker.onerror = () => {
+    if (worker !== activeWorker) return;
+    worker.terminate();
+    activeWorker = null;
+    scanNoteEl.hidden = true;
+    showError("Something went wrong scanning those files. Try Option A with an export instead.");
+  };
+  worker.postMessage({ files });
+}
+
+// Gather every file under a dropped item, recursing into directories.
+async function filesFromDataTransfer(dt: DataTransfer): Promise<File[]> {
+  const entries = Array.from(dt.items ?? [])
+    .map((it) => (it as DataTransferItem & { webkitGetAsEntry?: () => FileSystemEntry | null }).webkitGetAsEntry?.())
+    .filter((e): e is FileSystemEntry => !!e);
+  if (entries.length === 0) return Array.from(dt.files ?? []);
+
+  const out: File[] = [];
+  const walk = async (entry: FileSystemEntry): Promise<void> => {
+    if (entry.isFile) {
+      const file = await new Promise<File>((res, rej) => (entry as FileSystemFileEntry).file(res, rej));
+      out.push(file);
+    } else if (entry.isDirectory) {
+      const reader = (entry as FileSystemDirectoryEntry).createReader();
+      const readBatch = () => new Promise<FileSystemEntry[]>((res, rej) => reader.readEntries(res, rej));
+      let batch: FileSystemEntry[];
+      do {
+        batch = await readBatch();
+        for (const e of batch) await walk(e);
+      } while (batch.length > 0);
+    }
+  };
+  for (const e of entries) await walk(e);
+  return out;
+}
+
+const folderInputEl = $<HTMLInputElement>("folderInput");
+$<HTMLButtonElement>("folderPick").addEventListener("click", () => folderInputEl.click());
+folderInputEl.addEventListener("change", () => {
+  const files = folderInputEl.files ? Array.from(folderInputEl.files) : [];
+  if (files.length > 0) void recoverFromFiles(files);
+  folderInputEl.value = "";
+});
+
+const fileInputEl = $<HTMLInputElement>("fileInput");
+$<HTMLButtonElement>("filePick").addEventListener("click", () => fileInputEl.click());
+fileInputEl.addEventListener("change", () => {
+  const file = fileInputEl.files?.[0];
+  if (file) void recoverFromFiles([file]);
+  fileInputEl.value = "";
+});
+
+// ── Drag & drop wiring ──────────────────────────────────────────────────────
+function attachDrop(el: HTMLElement, onDrop: (dt: DataTransfer) => void) {
+  for (const type of ["dragenter", "dragover"]) {
+    el.addEventListener(type, (e) => {
+      e.preventDefault();
+      el.classList.add("drop-active");
+    });
+  }
+  for (const type of ["dragleave", "dragend"]) {
+    el.addEventListener(type, () => el.classList.remove("drop-active"));
+  }
+  el.addEventListener("drop", (e) => {
+    e.preventDefault();
+    el.classList.remove("drop-active");
+    const dt = (e as DragEvent).dataTransfer;
+    if (dt) onDrop(dt);
+  });
+}
+
+attachDrop($<HTMLDivElement>("jsonDrop"), (dt) => {
+  const file = dt.files?.[0];
+  if (file) void loadJsonFile(file);
+});
+attachDrop($<HTMLDivElement>("folderDrop"), (dt) => {
+  void filesFromDataTransfer(dt).then((files) => {
+    if (files.length > 0) recoverFromFiles(files);
+  });
+});
+
 $<HTMLButtonElement>("copy").addEventListener("click", async () => {
-  await navigator.clipboard.writeText(output.value);
+  try {
+    await navigator.clipboard.writeText(output.value);
+  } catch {
+    return;
+  }
   copiedEl.hidden = false;
 });

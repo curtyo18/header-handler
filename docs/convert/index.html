@@ -4,36 +4,173 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Header Handler — ModHeader Converter</title>
-  <script type="module" crossorigin src="./assets/index-BKrIwD6Z.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-ClimC5rJ.css">
+  <script type="module" crossorigin src="./assets/index-Bv5KpH8Y.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-NlU4nrli.css">
 </head>
 <body>
   <main class="wrap">
     <h1>ModHeader → Header Handler</h1>
     <p class="lead">
-      Paste a ModHeader export below to get a Header Handler share string. It runs
-      entirely in your browser — nothing is uploaded. Then open Header Handler's
-      options page, click <strong>Import</strong>, and paste the result.
+      Bring your ModHeader profiles across to Header Handler. Everything runs in
+      your browser — nothing you drop or paste here is ever uploaded.
     </p>
 
-    <label class="field-label" for="input">ModHeader JSON export</label>
-    <textarea id="input" class="io" placeholder='{"version":2,"profiles":[…]}'></textarea>
-
-    <div class="actions">
-      <button id="convert" type="button" class="btn">Convert</button>
+    <div class="banner" role="note">
+      <strong>Heads up:</strong> Google and Microsoft removed ModHeader from their
+      stores in July 2026 after build 7.0.18 was found bundling a hidden data
+      collector. Chrome and Edge <strong>force-disable</strong> it, so its own
+      Export button may no longer open. Don't try to re-run it — the steps below
+      get your profiles out <em>without</em> ModHeader working.
     </div>
+
+    <!-- METHOD A -->
+    <section class="method">
+      <h2 class="method-title">Option A — you have the export (or its JSON)</h2>
+      <p class="note">
+        If you exported a <code>.json</code> from ModHeader before it broke — or
+        it still opens on another machine or in Firefox — use that. Drop the file,
+        or paste the JSON.
+      </p>
+
+      <div id="jsonDrop" class="drop" data-kind="json">
+        <p class="drop-main">Drop your ModHeader <code>.json</code> file here</p>
+        <p class="drop-sub">
+          or <button id="jsonPick" type="button" class="link-btn">choose a file</button>,
+          or paste below
+        </p>
+        <input id="jsonFile" type="file" accept=".json,application/json" hidden />
+      </div>
+
+      <label class="field-label" for="input">ModHeader JSON export</label>
+      <textarea id="input" class="io" placeholder='{"version":2,"profiles":[…]}'></textarea>
+      <div class="actions">
+        <button id="convert" type="button" class="btn">Convert</button>
+      </div>
+    </section>
+
+    <!-- METHOD B -->
+    <section class="method">
+      <h2 class="method-title">Option B — recover from browser storage</h2>
+      <p class="note">
+        No export, and ModHeader won't open? Your profiles are still saved on disk
+        until you uninstall it. Recover them straight from the browser's data folder
+        — the extension never has to run.
+      </p>
+
+      <div class="os-switch" role="group" aria-label="Operating system">
+        <button id="os-mac" type="button" class="os-btn" aria-pressed="false">macOS</button>
+        <button id="os-win" type="button" class="os-btn" aria-pressed="false">Windows</button>
+      </div>
+
+      <ol class="step-list">
+        <li>
+          Paste this into
+          <span class="os-mac-only"><strong>Terminal</strong></span><span class="os-win-only"><strong>PowerShell</strong></span>
+          and run it. It scans your Chromium browsers (Chrome, Edge, Brave and their
+          variants) for ModHeader's data and saves it to <code>modheader-dump.txt</code>
+          — this can take a moment on a large profile:
+          <div class="os-mac-only cmd-block">
+            <pre class="cmd"><code id="cmd-mac"></code></pre>
+            <button type="button" class="link-btn" data-copy="cmd-mac">copy command</button>
+          </div>
+          <div class="os-win-only cmd-block">
+            <pre class="cmd"><code id="cmd-win"></code></pre>
+            <button type="button" class="link-btn" data-copy="cmd-win">copy command</button>
+          </div>
+          <span class="subnote">
+            It only <em>reads</em> files — ModHeader never runs. It uses only built-in
+            tools (nothing to install). The dump can contain header values like auth
+            tokens, so keep it local and delete it when you're done.
+          </span>
+          <span class="subnote os-mac-only">
+            If iCloud "Desktop &amp; Documents" sync is on, your Desktop syncs to iCloud —
+            delete <code>modheader-dump.txt</code> once you've imported.
+          </span>
+          <span class="subnote">
+            Saved <strong>0 bytes</strong>? Fully quit the browser that had ModHeader and run it again.
+          </span>
+        </li>
+        <li>
+          Back here, click <strong>select the dump file</strong> below, paste this
+          path into the dialog and press Enter (or just drag the file onto the box):
+          <div class="pathbox">
+            <code id="dumppath" class="path"></code>
+            <button type="button" class="link-btn" data-copy="dumppath">copy path</button>
+          </div>
+        </li>
+      </ol>
+
+      <details class="manual">
+        <summary>No terminal? Find the folder by hand</summary>
+        <ol class="step-list">
+          <li>
+            Open the browser's <strong>User Data</strong> folder — Chrome shown here:
+            <div class="pathbox">
+              <code id="path" class="path"></code>
+              <button type="button" class="link-btn" data-copy="path">copy path</button>
+            </div>
+            <span class="subnote os-mac-only">
+              In Finder press <strong>⇧⌘G</strong> and paste it. <code>Library</code> is hidden by default.
+            </span>
+            <span class="subnote os-win-only">
+              Paste it into the File Explorer address bar. <code>AppData</code> is hidden by default.
+            </span>
+          </li>
+          <li>
+            <strong>Search it for the id</strong> — there's no single <code>Default</code>
+            folder to rely on (Chrome names profiles <code>Default</code>, <code>Profile 1</code>,
+            <code>Profile 2</code>…), so search rather than guess:
+            <div class="pathbox">
+              <code id="id-code" class="path">idgpnmonknjnojddfkpgkljpfnnfcklj</code>
+              <button type="button" class="link-btn" data-copy="id-code">copy id</button>
+            </div>
+            <span class="subnote os-win-only">Type it into the File Explorer <strong>search box</strong> (top-right).</span>
+            <span class="subnote os-mac-only">In the Finder window press ⌘F, scope to <em>this folder</em>, search the name.</span>
+            <span class="subnote">
+              It turns up inside <code>Local Extension Settings</code> and/or an
+              <code>IndexedDB</code> folder named <code>…_idgp…_0.indexeddb.leveldb</code>.
+            </span>
+          </li>
+          <li>Drag the matching folder(s) onto the box below.</li>
+        </ol>
+      </details>
+
+      <div id="folderDrop" class="drop" data-kind="folder">
+        <p class="drop-main">Drop <code>modheader-dump.txt</code> here</p>
+        <p class="drop-sub">
+          or <button id="filePick" type="button" class="link-btn">select the dump file</button>,
+          or a <button id="folderPick" type="button" class="link-btn">storage folder</button>
+        </p>
+        <input id="fileInput" type="file" accept=".txt,text/plain" hidden />
+        <input id="folderInput" type="file" webkitdirectory hidden />
+      </div>
+      <p id="scanNote" class="note" hidden></p>
+    </section>
 
     <p id="error" class="error" hidden></p>
 
+    <!-- RESULT -->
     <section id="result" hidden>
+      <h2 class="method-title">Import into Header Handler</h2>
       <p id="summary" class="summary"></p>
 
       <label class="field-label" for="output">Header Handler share string</label>
       <textarea id="output" class="io" readonly></textarea>
       <div class="actions">
-        <button id="copy" type="button" class="btn">Copy</button>
+        <button id="copy" type="button" class="btn">Copy share string</button>
         <span id="copied" class="copied" hidden>Copied</span>
       </div>
+
+      <ol class="step-list">
+        <li>Right-click the <strong>Header Handler</strong> toolbar icon → <strong>Options</strong>.</li>
+        <li>Click <strong>Import</strong>.</li>
+        <li>
+          Paste the share string
+          (<span class="os-mac-only">⌘V</span><span class="os-win-only">Ctrl+V</span>)
+          and click <strong>Import</strong>.
+        </li>
+        <li>Review each profile's URL scope, then switch it on — all profiles import disabled.</li>
+      </ol>
 
       <ul id="warnings" class="warnings"></ul>
     </section>
