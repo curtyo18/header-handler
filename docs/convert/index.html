@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Header Handler — ModHeader Converter</title>
-  <script type="module" crossorigin src="./assets/index-BNUyVodv.js"></script>
+  <script type="module" crossorigin src="./assets/index-lS2pKZLe.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/index-BizAOdty.css">
 </head>
 <body>
@@ -40,7 +40,7 @@
           Paste this into
           <span class="os-mac-only"><strong>Terminal</strong></span><span class="os-win-only"><strong>PowerShell</strong></span>
           and run it — it only <em>reads</em> ModHeader's config files (the extension
-          never runs) and saves them to <code>modheader-dump.txt</code>:
+          never runs) and saves them to <code>modheader-dump.mhdump</code>:
           <div class="os-mac-only cmd-block">
             <pre class="cmd"><code id="cmd-mac"></code></pre>
             <button type="button" class="link-btn" data-copy="cmd-mac">copy command</button>
@@ -51,8 +51,10 @@
           </div>
         </li>
         <li>
-          Back here, click <strong>select the dump file</strong> below, paste this
-          path into the dialog and press Enter (or just drag the file onto the box):
+          Back here, click <strong>Select the dump file</strong> below and pick
+          <code>modheader-dump.mhdump</code> — on Chrome, Edge and Brave the dialog
+          opens straight to it. If your browser asks for a path instead, paste this
+          (or the one the command printed), or just drag the file onto the box:
           <div class="pathbox">
             <code id="dumppath" class="path"></code>
             <button type="button" class="link-btn" data-copy="dumppath">copy path</button>
@@ -62,8 +64,8 @@
 
       <div id="folderDrop" class="drop" data-kind="folder">
         <button id="filePick" type="button" class="btn">Select the dump file</button>
-        <p class="drop-sub">or drop <code>modheader-dump.txt</code> here</p>
-        <input id="fileInput" type="file" accept=".txt,text/plain,.json,application/json" hidden />
+        <p class="drop-sub">or drop <code>modheader-dump.mhdump</code> here</p>
+        <input id="fileInput" type="file" accept=".mhdump" hidden />
       </div>
     </section>
 

@@ -32,15 +32,19 @@ const EXT_ID = "idgpnmonknjnojddfkpgkljpfnnfcklj";
 // carries both and shows one. Detection is a guess (userAgentData is Chromium-
 // only) and the reader may recover on a different machine, hence the manual switch.
 
-// Where the command writes the dump — offered as a copy-able path so users can
-// paste it straight into the file-open dialog (macOS ⇧⌘G expands ~; the Windows
-// dialog expands %TEMP%). Windows uses %TEMP% not the Desktop: with OneDrive
-// "back up Desktop" on (the Win11 default) the real Desktop is under OneDrive and
-// $HOME\Desktop may not exist, so a Desktop write silently fails. %TEMP% always
-// resolves and is never cloud-synced.
+// Where the command writes the dump — offered as a copy-able path for the
+// fallback file input (macOS ⇧⌘G expands ~; the Windows dialog expands
+// %USERPROFILE%). On Chromium the picker uses startIn to open here directly, so
+// no path-pasting is needed (see the filePick handler). Windows writes to
+// Downloads, not the Desktop: with OneDrive "back up Desktop" on (the Win11
+// default) the real Desktop is under OneDrive and $HOME\Desktop may not exist, so
+// a Desktop write silently fails — Downloads isn't cloud-synced by default and is
+// a valid `startIn` target. The displayed %USERPROFILE%\Downloads assumes the
+// default location; if Downloads was relocated the command's echo prints the true
+// path (the command resolves the real known-folder), which step 2 points users to.
 const DUMP_PATH = {
-  mac: `~/Desktop/modheader-dump.txt`,
-  win: `%TEMP%\\modheader-dump.txt`,
+  mac: `~/Desktop/modheader-dump.mhdump`,
+  win: `%USERPROFILE%\\Downloads\\modheader-dump.mhdump`,
 } as const;
 
 function setOs(os: "mac" | "win") {
@@ -58,7 +62,7 @@ $<HTMLButtonElement>("os-win").addEventListener("click", () => setOs("win"));
 
 // Commands that dump ModHeader's *Extension Settings stores (Local holds the
 // current `profiles`; Sync/Managed hold cloud/policy copies) across Chrome/Edge/
-// Brave into modheader-dump.txt (the Desktop on macOS, %TEMP% on Windows). We
+// Brave into modheader-dump.mhdump (the Desktop on macOS, Downloads on Windows). We
 // deliberately skip the IndexedDB folder — that's the pulled build's harvested-
 // header cache (100 MB+), not profiles — which also keeps the dump small. Read-
 // only, the extension never executes. Formatted over multiple lines (bash "\"
@@ -75,12 +79,14 @@ const CMD = {
     `find ~/Library/Application\\ Support -type f \\`,
     `  -path '*Extension Settings/${EXT_ID}*' \\`,
     `  -exec cat {} + 2>/dev/null \\`,
-    `  > ~/Desktop/modheader-dump.txt`,
-    `echo "Saved $(wc -c < ~/Desktop/modheader-dump.txt) bytes to ~/Desktop/modheader-dump.txt"`,
+    `  > ~/Desktop/modheader-dump.mhdump`,
+    `echo "Saved $(wc -c < ~/Desktop/modheader-dump.mhdump) bytes to ~/Desktop/modheader-dump.mhdump"`,
   ].join("\n"),
   win: [
     `$id  = '${EXT_ID}'`,
-    `$out = Join-Path $env:TEMP 'modheader-dump.txt'`,
+    `$dl  = (New-Object -ComObject Shell.Application).NameSpace('shell:Downloads').Self.Path`,
+    `if (-not $dl) { $dl = Join-Path $env:USERPROFILE 'Downloads' }`,
+    `$out = Join-Path $dl 'modheader-dump.mhdump'`,
     ``,
     `$fs = [IO.File]::Create($out)`,
     `try {`,
@@ -193,8 +199,8 @@ function recoverFromFiles(files: File[]) {
     if (msg.profiles.length === 0) {
       showError(
         "No ModHeader profiles found in that dump. If the command reported 0 bytes, fully quit the browser and " +
-          "re-run it. Otherwise the profiles may be in compressed storage — try dropping the whole Extension " +
-          "Settings folder (see “find the folder by hand” above) instead of the dump file.",
+          "re-run it. Otherwise the profiles may be in compressed storage — try dragging the whole Extension " +
+          "Settings folder onto the box instead of the dump file.",
       );
       return;
     }
@@ -236,8 +242,42 @@ async function filesFromDataTransfer(dt: DataTransfer): Promise<File[]> {
   return out;
 }
 
+// The picker's file-type filter — .mhdump listed first so the dialog defaults to
+// it, but "All files" stays available (excludeAcceptAllOption omitted) as an
+// escape hatch for older .txt dumps or a folder-picked file.
+type OpenFilePicker = (opts: {
+  types?: { description: string; accept: Record<string, string[]> }[];
+  startIn?: "desktop" | "downloads";
+  multiple?: boolean;
+}) => Promise<Array<{ getFile(): Promise<File> }>>;
+const DUMP_TYPES = [{ description: "ModHeader dump", accept: { "application/octet-stream": [".mhdump"] } }];
+
 const fileInputEl = $<HTMLInputElement>("fileInput");
-$<HTMLButtonElement>("filePick").addEventListener("click", () => fileInputEl.click());
+// Prefer the File System Access API (Chromium): it opens the native picker in the
+// exact folder the command wrote to — Desktop on macOS, Downloads on Windows —
+// with .mhdump preselected, so there's no path to copy or paste. Firefox/Safari
+// lack it, so fall back to the hidden <input>, where the copy-able path in step 2
+// covers navigation.
+$<HTMLButtonElement>("filePick").addEventListener("click", async () => {
+  const pick = (window as unknown as { showOpenFilePicker?: OpenFilePicker }).showOpenFilePicker;
+  if (!pick) {
+    fileInputEl.click();
+    return;
+  }
+  try {
+    const handles = await pick({
+      types: DUMP_TYPES,
+      startIn: document.body.dataset.os === "mac" ? "desktop" : "downloads",
+      multiple: false,
+    });
+    void recoverFromFiles([await handles[0].getFile()]);
+  } catch (err) {
+    // AbortError = the user dismissed the dialog, so do nothing. Any other
+    // failure (picker or getFile rejected) falls back to the hidden <input> so
+    // the user still has a way to select the file.
+    if ((err as Error).name !== "AbortError") fileInputEl.click();
+  }
+});
 fileInputEl.addEventListener("change", () => {
   const file = fileInputEl.files?.[0];
   if (file) void recoverFromFiles([file]);
