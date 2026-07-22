@@ -172,9 +172,3 @@ export function dedupeProfiles(profiles: unknown[]): unknown[] {
   }
   return out;
 }
-
-// Single-text convenience (paste path): the best snapshot's profiles.
-export function extractProfiles(text: string): unknown[] {
-  const snap = bestSnapshot(text);
-  return snap ? dedupeProfiles(snap.profiles) : [];
-}

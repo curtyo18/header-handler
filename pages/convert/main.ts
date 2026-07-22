@@ -1,10 +1,8 @@
 import { convertModHeader } from "../../src/lib/modheader";
 import { encodeShare } from "../../src/lib/share";
-import { extractProfiles } from "./scan";
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
-const input = $<HTMLTextAreaElement>("input");
 const output = $<HTMLTextAreaElement>("output");
 const errorEl = $<HTMLParagraphElement>("error");
 const resultEl = $<HTMLElement>("result");
@@ -151,49 +149,7 @@ function convertAndRender(parsed: unknown) {
 }
 
 // ── Inputs ──────────────────────────────────────────────────────────────────
-// Paste / .json path: try to parse the whole thing first so a clean export
-// keeps its top-level version etc.; fall back to scanning fragments out of it.
-function convertText(text: string) {
-  errorEl.hidden = true;
-  let parsed: unknown = null;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    /* not whole-file JSON — scan below */
-  }
-  if (parsed && Array.isArray((parsed as { profiles?: unknown }).profiles)) {
-    convertAndRender(parsed);
-    return;
-  }
-  const profiles = extractProfiles(text);
-  if (profiles.length === 0) {
-    showError("Couldn't find any ModHeader profiles in that. Paste the full export JSON, or use Option A.");
-    return;
-  }
-  convertAndRender({ version: 2, profiles });
-}
-
-$<HTMLButtonElement>("convert").addEventListener("click", () => convertText(input.value));
-
-async function loadJsonFile(file: File) {
-  try {
-    input.value = await file.text();
-  } catch (e) {
-    showError(`Could not read ${file.name}: ${(e as Error).message}`);
-    return;
-  }
-  convertText(input.value);
-}
-
-const jsonFileEl = $<HTMLInputElement>("jsonFile");
-$<HTMLButtonElement>("jsonPick").addEventListener("click", () => jsonFileEl.click());
-jsonFileEl.addEventListener("change", () => {
-  const file = jsonFileEl.files?.[0];
-  if (file) void loadJsonFile(file);
-  jsonFileEl.value = "";
-});
-
-// Folder / dump recovery: scan the dropped files in a worker so a large storage
+// Dump / folder recovery: scan the dropped files in a worker so a large storage
 // dump (tens of MB of mostly binary) never freezes the page. LOCK is empty and
 // .ldb blocks may be Snappy-compressed (no plain JSON) — those contribute
 // nothing; recent writes in the uncompressed .log usually hit.
@@ -226,8 +182,8 @@ function recoverFromFiles(files: File[]) {
     if (msg.profiles.length === 0) {
       showError(
         "No ModHeader profiles found in that dump. If the command reported 0 bytes, fully quit the browser and " +
-          "re-run it. If it saved data but nothing surfaced here, the profiles may be in compressed storage — an " +
-          "export from another machine (Option B) is the fallback.",
+          "re-run it. Otherwise the profiles may be in compressed storage — try dropping the whole Extension " +
+          "Settings folder (see “find the folder by hand” above) instead of the dump file.",
       );
       return;
     }
@@ -238,7 +194,7 @@ function recoverFromFiles(files: File[]) {
     worker.terminate();
     activeWorker = null;
     scanNoteEl.hidden = true;
-    showError("Something went wrong scanning those files. Try Option B with an export instead.");
+    showError("Something went wrong scanning those files. Reload the page and try again.");
   };
   worker.postMessage({ files });
 }
@@ -304,10 +260,6 @@ function attachDrop(el: HTMLElement, onDrop: (dt: DataTransfer) => void) {
   });
 }
 
-attachDrop($<HTMLDivElement>("jsonDrop"), (dt) => {
-  const file = dt.files?.[0];
-  if (file) void loadJsonFile(file);
-});
 attachDrop($<HTMLDivElement>("folderDrop"), (dt) => {
   void filesFromDataTransfer(dt).then((files) => {
     if (files.length > 0) recoverFromFiles(files);

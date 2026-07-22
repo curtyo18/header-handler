@@ -8,10 +8,10 @@
 </head>
 <body>
   <main class="wrap">
-    <h1>ModHeader → Header Handler</h1>
+    <h1>Recover your ModHeader profiles</h1>
     <p class="lead">
-      Bring your ModHeader profiles across to Header Handler. Everything runs in
-      your browser — nothing you drop or paste here is ever uploaded.
+      Pull your profiles out of ModHeader and into Header Handler. Everything runs
+      in your browser — nothing you drop here is ever uploaded.
     </p>
 
     <div class="banner" role="note">
@@ -22,14 +22,11 @@
       get your profiles out <em>without</em> ModHeader working.
     </div>
 
-    <!-- METHOD A — primary: recover from disk -->
-    <section class="method">
-      <h2 class="method-title">Option A — recover from browser storage</h2>
+    <section class="method method-lead">
       <p class="note">
-        The store pull caught everyone off guard, so you probably never exported.
-        No problem: ModHeader's profiles are still saved on disk until you uninstall
-        it. Recover them straight from the browser's data folder — the extension
-        never has to run. (Already have a <code>.json</code> export? Skip to Option B.)
+        ModHeader's profiles are still saved on disk until you uninstall it. This
+        reads them straight from the browser's data folder — the extension never
+        has to run.
       </p>
 
       <div class="os-switch" role="group" aria-label="Operating system">
@@ -116,35 +113,14 @@
           or <button id="filePick" type="button" class="link-btn">select the dump file</button>,
           or a <button id="folderPick" type="button" class="link-btn">storage folder</button>
         </p>
-        <input id="fileInput" type="file" accept=".txt,text/plain" hidden />
+        <input id="fileInput" type="file" accept=".txt,text/plain,.json,application/json" hidden />
         <input id="folderInput" type="file" webkitdirectory hidden />
       </div>
       <p id="scanNote" class="note" hidden></p>
-    </section>
-
-    <!-- METHOD B — fallback: existing export -->
-    <section class="method">
-      <h2 class="method-title">Option B — already have an export?</h2>
       <p class="note">
-        If you exported a <code>.json</code> from ModHeader before it broke — or it
-        still opens on another machine or in Firefox — skip Option A and use it
-        directly. Drop the file, or paste the JSON.
+        Already have a ModHeader <code>.json</code> export (or it still opens on
+        another machine)? Drop that file here too — it's read the same way.
       </p>
-
-      <div id="jsonDrop" class="drop" data-kind="json">
-        <p class="drop-main">Drop your ModHeader <code>.json</code> file here</p>
-        <p class="drop-sub">
-          or <button id="jsonPick" type="button" class="link-btn">choose a file</button>,
-          or paste below
-        </p>
-        <input id="jsonFile" type="file" accept=".json,application/json" hidden />
-      </div>
-
-      <label class="field-label" for="input">ModHeader JSON export</label>
-      <textarea id="input" class="io" placeholder='{"version":2,"profiles":[…]}'></textarea>
-      <div class="actions">
-        <button id="convert" type="button" class="btn">Convert</button>
-      </div>
     </section>
 
     <p id="error" class="error" hidden></p>

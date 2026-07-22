@@ -41,6 +41,8 @@ h1 { font-size: 26px; margin: 0 0 8px; }
 
 /* Methods / result sections */
 .method { margin: 36px 0 0; padding-top: 24px; border-top: 1px solid var(--border); }
+/* The lead method follows the banner directly — no divider needed above it. */
+.method-lead { margin-top: 20px; padding-top: 0; border-top: 0; }
 .method-title { font-size: 17px; margin: 0 0 10px; }
 .step-list { margin: 12px 0 0; padding-left: 20px; font-size: 14px; }
 .step-list li { margin: 4px 0; }
@@ -61,7 +63,7 @@ h1 { font-size: 26px; margin: 0 0 8px; }
 .os-mac-only, .os-win-only { display: none; }
 body[data-os="mac"] .os-mac-only, body[data-os="win"] .os-win-only { display: inline; }
 
-/* Path box (Option B) */
+/* Path box — the User-Data and dump-file paths in the recovery steps */
 .pathbox {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   margin: 8px 0 4px;

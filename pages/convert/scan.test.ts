@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { bestSnapshot, dedupeProfiles, extractProfiles, pickNewer, type Snapshot } from "./scan";
+import { bestSnapshot, dedupeProfiles, pickNewer, type Snapshot } from "./scan";
 
 // Synthetic ModHeader-shaped profiles only — never real exports (proprietary).
 const profile = (title: string, headerValue = "v") => ({
@@ -91,13 +91,22 @@ describe("pickNewer", () => {
   });
 });
 
-describe("extractProfiles / dedupeProfiles", () => {
+describe("dedupeProfiles", () => {
   it("dedupes structurally identical profiles", () => {
     expect(dedupeProfiles([profile("A"), profile("A"), profile("B")])).toHaveLength(2);
   });
+});
 
-  it("returns the best snapshot's profiles, deduped", () => {
-    expect(extractProfiles(liveRecord([profile("A"), profile("A")]))).toHaveLength(1);
-    expect(extractProfiles("not a dump")).toEqual([]);
+describe("bestSnapshot on a plain export (no LevelDB framing)", () => {
+  // The single recovery flow relies on the dump scanner also handling a clean
+  // {version,profiles:[…]} export dropped on the box — assert that directly.
+  it("recovers profiles from a clean ModHeader .json export", () => {
+    const exported = JSON.stringify({ version: 2, profiles: [profile("Work"), profile("Mocks")] });
+    const snap = bestSnapshot(exported) as Snapshot;
+    expect((snap.profiles as { title: string }[]).map((p) => p.title)).toEqual(["Work", "Mocks"]);
+  });
+
+  it("returns null when there is no profiles array at all", () => {
+    expect(bestSnapshot("not a dump")).toBeNull();
   });
 });
