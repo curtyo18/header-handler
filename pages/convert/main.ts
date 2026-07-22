@@ -9,7 +9,20 @@ const resultEl = $<HTMLElement>("result");
 const summaryEl = $<HTMLParagraphElement>("summary");
 const warningsEl = $<HTMLUListElement>("warnings");
 const copiedEl = $<HTMLSpanElement>("copied");
-const scanNoteEl = $<HTMLParagraphElement>("scanNote");
+const scanOverlayEl = $<HTMLElement>("scanOverlay");
+const scanStatusEl = $<HTMLParagraphElement>("scanStatus");
+
+// Full-page overlay + spinner while a scan runs; a subtle inline text update read
+// as "nothing is happening", so this makes the processing state unmistakable.
+function showScanning(text: string) {
+  // Unhide first, then set text: an aria-live region mutated while still hidden
+  // often isn't announced when it later appears, so reveal it before the update.
+  scanOverlayEl.hidden = false;
+  scanStatusEl.textContent = text;
+}
+function hideScanning() {
+  scanOverlayEl.hidden = true;
+}
 
 // ModHeader's Chrome extension id — its storage folder is named after it.
 const EXT_ID = "idgpnmonknjnojddfkpgkljpfnnfcklj";
@@ -170,8 +183,7 @@ let activeWorker: Worker | null = null;
 function recoverFromFiles(files: File[]) {
   errorEl.hidden = true;
   resultEl.hidden = true;
-  scanNoteEl.hidden = false;
-  scanNoteEl.textContent = `Scanning ${files.length} file${files.length === 1 ? "" : "s"}…`;
+  showScanning(`Scanning ${files.length} file${files.length === 1 ? "" : "s"}…`);
 
   activeWorker?.terminate();
   const worker = new Worker(new URL("./scanner.worker.ts", import.meta.url), { type: "module" });
@@ -181,12 +193,12 @@ function recoverFromFiles(files: File[]) {
     if (worker !== activeWorker) return; // superseded by a newer scan
     const msg = e.data;
     if (msg.type === "progress") {
-      scanNoteEl.textContent = `Scanning… (${msg.scanned}/${msg.total})`;
+      showScanning(`Scanning… (${msg.scanned}/${msg.total})`);
       return;
     }
     worker.terminate();
     activeWorker = null;
-    scanNoteEl.hidden = true;
+    hideScanning();
     if (msg.profiles.length === 0) {
       showError(
         "No ModHeader profiles found in that dump. If the command reported 0 bytes, fully quit the browser and " +
@@ -201,7 +213,7 @@ function recoverFromFiles(files: File[]) {
     if (worker !== activeWorker) return;
     worker.terminate();
     activeWorker = null;
-    scanNoteEl.hidden = true;
+    hideScanning();
     showError("Something went wrong scanning those files. Reload the page and try again.");
   };
   worker.postMessage({ files });
