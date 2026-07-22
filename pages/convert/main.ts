@@ -54,16 +54,18 @@ setOs(/mac/i.test(uaPlatform) ? "mac" : "win");
 $<HTMLButtonElement>("os-mac").addEventListener("click", () => setOs("mac"));
 $<HTMLButtonElement>("os-win").addEventListener("click", () => setOs("win"));
 
-// Commands that locate ModHeader's storage across Chrome/Edge/Brave and dump
-// every matching file's bytes to modheader-dump.txt (the Desktop on macOS, %TEMP%
-// on Windows) — read-only, the extension never executes. The page's scanner then
-// pulls profiles from the dump. Formatted over multiple lines (bash "\"
+// Commands that dump ModHeader's *Extension Settings stores (Local holds the
+// current `profiles`; Sync/Managed hold cloud/policy copies) across Chrome/Edge/
+// Brave into modheader-dump.txt (the Desktop on macOS, %TEMP% on Windows). We
+// deliberately skip the IndexedDB folder — that's the pulled build's harvested-
+// header cache (100 MB+), not profiles — which also keeps the dump small. Read-
+// only, the extension never executes. Formatted over multiple lines (bash "\"
 // continuations; PowerShell trailing-pipe continuations) so a long one-liner
 // doesn't read as sketchy. Kept in JS so the extension id is single-sourced.
 const CMD = {
   mac: [
-    `find ~/Library/Application\\ Support \\`,
-    `  -path '*${EXT_ID}*' -type f \\`,
+    `find ~/Library/Application\\ Support -type f \\`,
+    `  -path '*Extension Settings/${EXT_ID}*' \\`,
     `  -exec cat {} + 2>/dev/null \\`,
     `  > ~/Desktop/modheader-dump.txt`,
     `echo "Saved $(wc -c < ~/Desktop/modheader-dump.txt) bytes to ~/Desktop/modheader-dump.txt"`,
@@ -72,7 +74,8 @@ const CMD = {
     `$id  = '${EXT_ID}'`,
     `$out = Join-Path $env:TEMP 'modheader-dump.txt'`,
     ``,
-    `Get-ChildItem $env:LOCALAPPDATA, $env:APPDATA -Recurse -Directory -Filter "*$id*" -EA SilentlyContinue |`,
+    `Get-ChildItem $env:LOCALAPPDATA, $env:APPDATA -Recurse -Directory -Filter $id -EA SilentlyContinue |`,
+    `  Where-Object { $_.Parent.Name -like '*Extension Settings' } |`,
     `  ForEach-Object { Get-ChildItem $_.FullName -File -EA SilentlyContinue } |`,
     `  ForEach-Object { try { [IO.File]::ReadAllText($_.FullName) } catch {} } |`,
     `  Set-Content $out -Encoding UTF8`,
@@ -90,9 +93,13 @@ $<HTMLElement>("cmd-win").textContent = CMD.win;
 const COPY_FEEDBACK_MS = 1200;
 for (const btn of document.querySelectorAll<HTMLButtonElement>("[data-copy]")) {
   btn.addEventListener("click", async () => {
-    const target = document.getElementById(btn.dataset.copy!);
+    const key = btn.dataset.copy!;
+    const target = document.getElementById(key);
+    // Commands get a trailing newline so pasting runs the final line without a
+    // manual Enter; paths/id are copied verbatim.
+    const text = (target?.textContent ?? "") + (key.startsWith("cmd-") ? "\n" : "");
     try {
-      await navigator.clipboard.writeText(target?.textContent ?? "");
+      await navigator.clipboard.writeText(text);
     } catch {
       return;
     }
@@ -160,7 +167,7 @@ function convertText(text: string) {
   }
   const profiles = extractProfiles(text);
   if (profiles.length === 0) {
-    showError("Couldn't find any ModHeader profiles in that. Paste the full export JSON, or use Option B.");
+    showError("Couldn't find any ModHeader profiles in that. Paste the full export JSON, or use Option A.");
     return;
   }
   convertAndRender({ version: 2, profiles });
@@ -220,7 +227,7 @@ function recoverFromFiles(files: File[]) {
       showError(
         "No ModHeader profiles found in that dump. If the command reported 0 bytes, fully quit the browser and " +
           "re-run it. If it saved data but nothing surfaced here, the profiles may be in compressed storage — an " +
-          "export from another machine (Option A) is the fallback.",
+          "export from another machine (Option B) is the fallback.",
       );
       return;
     }
@@ -231,7 +238,7 @@ function recoverFromFiles(files: File[]) {
     worker.terminate();
     activeWorker = null;
     scanNoteEl.hidden = true;
-    showError("Something went wrong scanning those files. Try Option A with an export instead.");
+    showError("Something went wrong scanning those files. Try Option B with an export instead.");
   };
   worker.postMessage({ files });
 }
