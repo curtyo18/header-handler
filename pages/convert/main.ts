@@ -60,6 +60,12 @@ $<HTMLButtonElement>("os-win").addEventListener("click", () => setOs("win"));
 // only, the extension never executes. Formatted over multiple lines (bash "\"
 // continuations; PowerShell trailing-pipe continuations) so a long one-liner
 // doesn't read as sketchy. Kept in JS so the extension id is single-sourced.
+//
+// Both platforms must copy the stores byte-for-byte: they're binary LevelDB
+// (Snappy-compressed blocks, varint framing) and the profile JSON lives inside
+// as raw bytes. macOS `cat` is byte-exact. On Windows we stream ReadAllBytes ->
+// FileStream (NOT ReadAllText/Set-Content, which decode as text and replace
+// every non-UTF-8 byte with U+FFFD — irreversibly shredding the JSON payloads).
 const CMD = {
   mac: [
     `find ~/Library/Application\\ Support -type f \\`,
@@ -72,11 +78,13 @@ const CMD = {
     `$id  = '${EXT_ID}'`,
     `$out = Join-Path $env:TEMP 'modheader-dump.txt'`,
     ``,
-    `Get-ChildItem $env:LOCALAPPDATA, $env:APPDATA -Recurse -Directory -Filter $id -EA SilentlyContinue |`,
-    `  Where-Object { $_.Parent.Name -like '*Extension Settings' } |`,
-    `  ForEach-Object { Get-ChildItem $_.FullName -File -EA SilentlyContinue } |`,
-    `  ForEach-Object { try { [IO.File]::ReadAllText($_.FullName) } catch {} } |`,
-    `  Set-Content $out -Encoding UTF8`,
+    `$fs = [IO.File]::Create($out)`,
+    `try {`,
+    `  Get-ChildItem $env:LOCALAPPDATA, $env:APPDATA -Recurse -Directory -Filter $id -EA SilentlyContinue |`,
+    `    Where-Object { $_.Parent.Name -like '*Extension Settings' } |`,
+    `    ForEach-Object { Get-ChildItem $_.FullName -File -EA SilentlyContinue } |`,
+    `    ForEach-Object { try { $b = [IO.File]::ReadAllBytes($_.FullName); $fs.Write($b, 0, $b.Length) } catch {} }`,
+    `} finally { $fs.Close() }`,
     ``,
     `"Saved $([int](Get-Item $out -EA SilentlyContinue).Length) bytes to $out"`,
   ].join("\n"),
