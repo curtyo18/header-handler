@@ -92,8 +92,7 @@ body[data-os="mac"] .os-mac-only, body[data-os="win"] .os-win-only { display: in
   margin-top: 16px;
 }
 .drop-active { border-color: var(--accent); border-style: solid; }
-.drop-main { margin: 0; font-size: 15px; }
-.drop-sub { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+.drop-sub { margin: 10px 0 0; color: var(--muted); font-size: 13px; }
 .link-btn {
   background: none; border: 0; padding: 0; cursor: pointer;
   color: var(--accent); font: inherit; text-decoration: underline;
