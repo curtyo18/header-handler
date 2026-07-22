@@ -104,6 +104,23 @@ body[data-os="mac"] .os-mac-only, body[data-os="win"] .os-win-only { display: in
   background: none; border: 0; padding: 0; cursor: pointer;
   color: var(--accent); font: inherit; text-decoration: underline;
 }
+/* Full-page scanning overlay (see showScanning in main.ts for the why). */
+.scan-overlay {
+  position: fixed; inset: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(11, 11, 12, 0.82); backdrop-filter: blur(2px);
+}
+.scan-overlay[hidden] { display: none; }
+.scan-overlay-inner { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.spinner {
+  width: 40px; height: 40px; border-radius: 50%;
+  border: 3px solid var(--border); border-top-color: var(--accent);
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.scan-status { color: var(--text); font-size: 14px; margin: 0; }
+@media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+
 .error { color: var(--danger); font-size: 14px; margin: 16px 0 0; }
 .summary { font-size: 14px; margin: 0 0 4px; }
 .warnings { list-style: none; padding: 0; margin: 20px 0 0; }

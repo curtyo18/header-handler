@@ -57,9 +57,6 @@
             If iCloud "Desktop &amp; Documents" sync is on, your Desktop syncs to iCloud —
             delete <code>modheader-dump.txt</code> once you've imported.
           </span>
-          <span class="subnote">
-            Saved <strong>0 bytes</strong>? Fully quit the browser that had ModHeader and run it again.
-          </span>
         </li>
         <li>
           Back here, click <strong>select the dump file</strong> below, paste this
@@ -116,7 +113,6 @@
         <input id="fileInput" type="file" accept=".txt,text/plain,.json,application/json" hidden />
         <input id="folderInput" type="file" webkitdirectory hidden />
       </div>
-      <p id="scanNote" class="note" hidden></p>
       <p class="note">
         Already have a ModHeader <code>.json</code> export (or it still opens on
         another machine)? Drop that file here too — it's read the same way.
@@ -151,6 +147,15 @@
       <ul id="warnings" class="warnings"></ul>
     </section>
   </main>
+
+  <!-- Full-page overlay shown while a dump/folder is being scanned. -->
+  <div id="scanOverlay" class="scan-overlay" role="status" aria-live="polite" hidden>
+    <div class="scan-overlay-inner">
+      <div class="spinner" aria-hidden="true"></div>
+      <p id="scanStatus" class="scan-status">Scanning…</p>
+    </div>
+  </div>
+
   <script type="module" src="./main.ts"></script>
 </body>
 </html>
