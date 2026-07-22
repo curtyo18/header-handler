@@ -52,6 +52,9 @@ export function convertModHeader(raw: unknown): ConvertResult {
   }
   const mhProfiles = (raw as { profiles: unknown[] }).profiles;
   const warnings: string[] = [];
+  // Collected across profiles and summarised once — a per-profile "no URL filter"
+  // warning repeats dozens of times on a typical import and drowns the rest.
+  const noFilterNames: string[] = [];
 
   const profiles: Profile[] = mhProfiles.map((rawProfile, i) => {
     const p = (rawProfile ?? {}) as MhProfile;
@@ -65,7 +68,7 @@ export function convertModHeader(raw: unknown): ConvertResult {
     let matcher: Matcher;
     if (active.length === 0) {
       matcher = { mode: "regex", value: ".*" };
-      warnings.push(`Profile "${name}": no active URL filter → matches all URLs (imported disabled).`);
+      noFilterNames.push(name);
     } else if (active.length === 1) {
       matcher = { mode: "regex", value: stripBoundingWildcards(active[0].urlRegex as string) };
     } else {
@@ -114,6 +117,15 @@ export function convertModHeader(raw: unknown): ConvertResult {
 
     return { id: "", name, enabled: false, matcher, rules };
   });
+
+  if (noFilterNames.length === 1) {
+    warnings.push(`Profile "${noFilterNames[0]}" has no URL filter, so it matches all URLs — review its scope before enabling.`);
+  } else if (noFilterNames.length > 1) {
+    warnings.push(
+      `${noFilterNames.length} profiles have no URL filter, so they match all URLs — review their scope before enabling: ` +
+        `${noFilterNames.map((n) => `"${n}"`).join(", ")}.`,
+    );
+  }
 
   return { config: { version: 1, masterEnabled: true, profiles }, warnings };
 }

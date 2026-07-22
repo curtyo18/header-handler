@@ -80,7 +80,18 @@ describe("convertModHeader", () => {
   it("falls back to .* and warns when no active filter", () => {
     const { config, warnings } = convertModHeader({ profiles: [{ title: "A", headers: [] }] });
     expect(config.profiles[0].matcher).toEqual({ mode: "regex", value: ".*" });
-    expect(warnings).toContainEqual('Profile "A": no active URL filter → matches all URLs (imported disabled).');
+    expect(warnings).toContainEqual('Profile "A" has no URL filter, so it matches all URLs — review its scope before enabling.');
+  });
+
+  it("summarises no-filter profiles into a single warning", () => {
+    const { warnings } = convertModHeader({
+      profiles: [{ title: "A", headers: [] }, { title: "B", headers: [] }, { title: "C", headers: [] }],
+    });
+    const noFilter = warnings.filter((w) => w.includes("no URL filter"));
+    expect(noFilter).toHaveLength(1);
+    expect(noFilter[0]).toBe(
+      '3 profiles have no URL filter, so they match all URLs — review their scope before enabling: "A", "B", "C".',
+    );
   });
 
   it("names an untitled profile by position", () => {

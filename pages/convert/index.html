@@ -22,38 +22,14 @@
       get your profiles out <em>without</em> ModHeader working.
     </div>
 
-    <!-- METHOD A -->
+    <!-- METHOD A — primary: recover from disk -->
     <section class="method">
-      <h2 class="method-title">Option A — you have the export (or its JSON)</h2>
+      <h2 class="method-title">Option A — recover from browser storage</h2>
       <p class="note">
-        If you exported a <code>.json</code> from ModHeader before it broke — or
-        it still opens on another machine or in Firefox — use that. Drop the file,
-        or paste the JSON.
-      </p>
-
-      <div id="jsonDrop" class="drop" data-kind="json">
-        <p class="drop-main">Drop your ModHeader <code>.json</code> file here</p>
-        <p class="drop-sub">
-          or <button id="jsonPick" type="button" class="link-btn">choose a file</button>,
-          or paste below
-        </p>
-        <input id="jsonFile" type="file" accept=".json,application/json" hidden />
-      </div>
-
-      <label class="field-label" for="input">ModHeader JSON export</label>
-      <textarea id="input" class="io" placeholder='{"version":2,"profiles":[…]}'></textarea>
-      <div class="actions">
-        <button id="convert" type="button" class="btn">Convert</button>
-      </div>
-    </section>
-
-    <!-- METHOD B -->
-    <section class="method">
-      <h2 class="method-title">Option B — recover from browser storage</h2>
-      <p class="note">
-        No export, and ModHeader won't open? Your profiles are still saved on disk
-        until you uninstall it. Recover them straight from the browser's data folder
-        — the extension never has to run.
+        The store pull caught everyone off guard, so you probably never exported.
+        No problem: ModHeader's profiles are still saved on disk until you uninstall
+        it. Recover them straight from the browser's data folder — the extension
+        never has to run. (Already have a <code>.json</code> export? Skip to Option B.)
       </p>
 
       <div class="os-switch" role="group" aria-label="Operating system">
@@ -65,9 +41,8 @@
         <li>
           Paste this into
           <span class="os-mac-only"><strong>Terminal</strong></span><span class="os-win-only"><strong>PowerShell</strong></span>
-          and run it. It scans your Chromium browsers (Chrome, Edge, Brave and their
-          variants) for ModHeader's data and saves it to <code>modheader-dump.txt</code>
-          — this can take a moment on a large profile:
+          and run it. It reads ModHeader's saved profiles from Chrome, Edge and Brave
+          (and their variants) and saves them to <code>modheader-dump.txt</code>:
           <div class="os-mac-only cmd-block">
             <pre class="cmd"><code id="cmd-mac"></code></pre>
             <button type="button" class="link-btn" data-copy="cmd-mac">copy command</button>
@@ -126,11 +101,12 @@
             <span class="subnote os-win-only">Type it into the File Explorer <strong>search box</strong> (top-right).</span>
             <span class="subnote os-mac-only">In the Finder window press ⌘F, scope to <em>this folder</em>, search the name.</span>
             <span class="subnote">
-              It turns up inside <code>Local Extension Settings</code> and/or an
-              <code>IndexedDB</code> folder named <code>…_idgp…_0.indexeddb.leveldb</code>.
+              You want the <code>&lt;id&gt;</code> folder inside <strong>Local Extension Settings</strong>
+              (or Sync / Managed Extension Settings). Ignore the <code>IndexedDB</code> one named
+              <code>…_idgp…_0.indexeddb.leveldb</code> — that's the pulled build's data cache, not your profiles.
             </span>
           </li>
-          <li>Drag the matching folder(s) onto the box below.</li>
+          <li>Drag the matching <strong>Extension Settings</strong> folder onto the box below.</li>
         </ol>
       </details>
 
@@ -144,6 +120,31 @@
         <input id="folderInput" type="file" webkitdirectory hidden />
       </div>
       <p id="scanNote" class="note" hidden></p>
+    </section>
+
+    <!-- METHOD B — fallback: existing export -->
+    <section class="method">
+      <h2 class="method-title">Option B — already have an export?</h2>
+      <p class="note">
+        If you exported a <code>.json</code> from ModHeader before it broke — or it
+        still opens on another machine or in Firefox — skip Option A and use it
+        directly. Drop the file, or paste the JSON.
+      </p>
+
+      <div id="jsonDrop" class="drop" data-kind="json">
+        <p class="drop-main">Drop your ModHeader <code>.json</code> file here</p>
+        <p class="drop-sub">
+          or <button id="jsonPick" type="button" class="link-btn">choose a file</button>,
+          or paste below
+        </p>
+        <input id="jsonFile" type="file" accept=".json,application/json" hidden />
+      </div>
+
+      <label class="field-label" for="input">ModHeader JSON export</label>
+      <textarea id="input" class="io" placeholder='{"version":2,"profiles":[…]}'></textarea>
+      <div class="actions">
+        <button id="convert" type="button" class="btn">Convert</button>
+      </div>
     </section>
 
     <p id="error" class="error" hidden></p>

@@ -1,18 +1,20 @@
 /// <reference lib="webworker" />
-import { dedupeProfiles, extractProfiles } from "./scan";
+import { bestSnapshot, dedupeProfiles, pickNewer, type Snapshot } from "./scan";
 
 // Reads and scans the dropped files off the main thread so a large storage dump
-// (tens of MB) never freezes the page. Posts progress per file, then the deduped
-// raw profiles.
+// never freezes the page. Each ModHeader save writes the whole profiles array and
+// the LevelDB keeps every past write, so we take the single best snapshot across
+// all files (authoritative live value, else newest backup) — the user's current
+// state — not the union.
 declare const self: DedicatedWorkerGlobalScope;
 
-// Skip anything implausibly large for a storage file — a runaway cache or the
+// Skip anything implausibly large for a settings file — a runaway cache or the
 // whole IndexedDB blob — so one giant file can't stall the scan.
 const MAX_FILE_BYTES = 256 * 1024 * 1024;
 
 self.onmessage = async (e: MessageEvent<{ files: File[] }>) => {
   const { files } = e.data;
-  const profiles: unknown[] = [];
+  let best: Snapshot | null = null;
 
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
@@ -22,10 +24,10 @@ self.onmessage = async (e: MessageEvent<{ files: File[] }>) => {
     try {
       text = await file.text();
     } catch {
-      continue;
+      continue; // unreadable file (permissions / vanished) — skip it, scan the rest
     }
-    for (const p of extractProfiles(text)) profiles.push(p);
+    best = pickNewer(best, bestSnapshot(text));
   }
 
-  self.postMessage({ type: "done", profiles: dedupeProfiles(profiles) });
+  self.postMessage({ type: "done", profiles: best ? dedupeProfiles(best.profiles) : [] });
 };
