@@ -38,8 +38,8 @@
         <li>
           Paste this into
           <span class="os-mac-only"><strong>Terminal</strong></span><span class="os-win-only"><strong>PowerShell</strong></span>
-          and run it. It reads ModHeader's saved profiles from Chrome, Edge and Brave
-          (and their variants) and saves them to <code>modheader-dump.txt</code>:
+          and run it — it only <em>reads</em> ModHeader's config files (the extension
+          never runs) and saves them to <code>modheader-dump.txt</code>:
           <div class="os-mac-only cmd-block">
             <pre class="cmd"><code id="cmd-mac"></code></pre>
             <button type="button" class="link-btn" data-copy="cmd-mac">copy command</button>
@@ -48,15 +48,6 @@
             <pre class="cmd"><code id="cmd-win"></code></pre>
             <button type="button" class="link-btn" data-copy="cmd-win">copy command</button>
           </div>
-          <span class="subnote">
-            It only <em>reads</em> files — ModHeader never runs. It uses only built-in
-            tools (nothing to install). The dump can contain header values like auth
-            tokens, so keep it local and delete it when you're done.
-          </span>
-          <span class="subnote os-mac-only">
-            If iCloud "Desktop &amp; Documents" sync is on, your Desktop syncs to iCloud —
-            delete <code>modheader-dump.txt</code> once you've imported.
-          </span>
         </li>
         <li>
           Back here, click <strong>select the dump file</strong> below, paste this
@@ -107,16 +98,10 @@
       <div id="folderDrop" class="drop" data-kind="folder">
         <p class="drop-main">Drop <code>modheader-dump.txt</code> here</p>
         <p class="drop-sub">
-          or <button id="filePick" type="button" class="link-btn">select the dump file</button>,
-          or a <button id="folderPick" type="button" class="link-btn">storage folder</button>
+          or <button id="filePick" type="button" class="link-btn">select the dump file</button>
         </p>
         <input id="fileInput" type="file" accept=".txt,text/plain,.json,application/json" hidden />
-        <input id="folderInput" type="file" webkitdirectory hidden />
       </div>
-      <p class="note">
-        Already have a ModHeader <code>.json</code> export (or it still opens on
-        another machine)? Drop that file here too — it's read the same way.
-      </p>
     </section>
 
     <p id="error" class="error" hidden></p>

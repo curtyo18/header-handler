@@ -245,14 +245,6 @@ async function filesFromDataTransfer(dt: DataTransfer): Promise<File[]> {
   return out;
 }
 
-const folderInputEl = $<HTMLInputElement>("folderInput");
-$<HTMLButtonElement>("folderPick").addEventListener("click", () => folderInputEl.click());
-folderInputEl.addEventListener("change", () => {
-  const files = folderInputEl.files ? Array.from(folderInputEl.files) : [];
-  if (files.length > 0) void recoverFromFiles(files);
-  folderInputEl.value = "";
-});
-
 const fileInputEl = $<HTMLInputElement>("fileInput");
 $<HTMLButtonElement>("filePick").addEventListener("click", () => fileInputEl.click());
 fileInputEl.addEventListener("change", () => {
