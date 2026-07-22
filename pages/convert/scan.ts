@@ -13,6 +13,8 @@
 // return the best one — never the union of history (which would explode one
 // edited profile into dozens of near-duplicates that collapse on import).
 
+import { extractSnappyJsonTexts } from "./snappy";
+
 export function isProfileLike(p: unknown): boolean {
   return !!p && typeof p === "object" && Array.isArray((p as { headers?: unknown }).headers);
 }
@@ -156,6 +158,15 @@ export function bestSnapshot(text: string): Snapshot | null {
     if (beatsBest) best = { live, ts, at: start, profiles };
   }
   return best ? { ts: best.ts, live: best.live, profiles: best.profiles } : null;
+}
+
+// Best profiles snapshot across a file's raw bytes: the plaintext view (UTF-8, as
+// the worker previously read via file.text()) merged with any snapshot hidden
+// inside Snappy-compressed LevelDB blocks, ranked by the same pickNewer rules.
+export function scanBytes(bytes: Uint8Array): Snapshot | null {
+  let best = bestSnapshot(new TextDecoder().decode(bytes));
+  for (const text of extractSnappyJsonTexts(bytes)) best = pickNewer(best, bestSnapshot(text));
+  return best;
 }
 
 // Drop structurally-identical profiles (same fields), e.g. a profile present both
