@@ -28,17 +28,9 @@ function hideScanning() {
 const EXT_ID = "idgpnmonknjnojddfkpgkljpfnnfcklj";
 
 // ── OS-specific instructions ────────────────────────────────────────────────
-// macOS and Windows differ only in the storage path and modifier keys, so the
-// page carries both and shows one. Detection is a guess (userAgentData is
-// Chromium-only) and the reader may recover on a different machine, hence the
-// manual switch.
-// The browser's User Data root, not a guessed profile path: ModHeader's data can
-// live under Default OR Profile 1/2/… (one per Chrome profile), so we point users
-// at the root and have them search it for EXT_ID.
-const USER_DATA_PATH = {
-  mac: `~/Library/Application Support/Google/Chrome`,
-  win: `%LOCALAPPDATA%\\Google\\Chrome\\User Data`,
-} as const;
+// macOS and Windows differ only in the dump path and modifier keys, so the page
+// carries both and shows one. Detection is a guess (userAgentData is Chromium-
+// only) and the reader may recover on a different machine, hence the manual switch.
 
 // Where the command writes the dump — offered as a copy-able path so users can
 // paste it straight into the file-open dialog (macOS ⇧⌘G expands ~; the Windows
@@ -55,7 +47,6 @@ function setOs(os: "mac" | "win") {
   document.body.dataset.os = os;
   $<HTMLButtonElement>("os-mac").setAttribute("aria-pressed", String(os === "mac"));
   $<HTMLButtonElement>("os-win").setAttribute("aria-pressed", String(os === "win"));
-  $<HTMLElement>("path").textContent = USER_DATA_PATH[os];
   $<HTMLElement>("dumppath").textContent = DUMP_PATH[os];
 }
 

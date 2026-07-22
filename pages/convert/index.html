@@ -59,42 +59,6 @@
         </li>
       </ol>
 
-      <details class="manual">
-        <summary>No terminal? Find the folder by hand</summary>
-        <ol class="step-list">
-          <li>
-            Open the browser's <strong>User Data</strong> folder — Chrome shown here:
-            <div class="pathbox">
-              <code id="path" class="path"></code>
-              <button type="button" class="link-btn" data-copy="path">copy path</button>
-            </div>
-            <span class="subnote os-mac-only">
-              In Finder press <strong>⇧⌘G</strong> and paste it. <code>Library</code> is hidden by default.
-            </span>
-            <span class="subnote os-win-only">
-              Paste it into the File Explorer address bar. <code>AppData</code> is hidden by default.
-            </span>
-          </li>
-          <li>
-            <strong>Search it for the id</strong> — there's no single <code>Default</code>
-            folder to rely on (Chrome names profiles <code>Default</code>, <code>Profile 1</code>,
-            <code>Profile 2</code>…), so search rather than guess:
-            <div class="pathbox">
-              <code id="id-code" class="path">idgpnmonknjnojddfkpgkljpfnnfcklj</code>
-              <button type="button" class="link-btn" data-copy="id-code">copy id</button>
-            </div>
-            <span class="subnote os-win-only">Type it into the File Explorer <strong>search box</strong> (top-right).</span>
-            <span class="subnote os-mac-only">In the Finder window press ⌘F, scope to <em>this folder</em>, search the name.</span>
-            <span class="subnote">
-              You want the <code>&lt;id&gt;</code> folder inside <strong>Local Extension Settings</strong>
-              (or Sync / Managed Extension Settings). Ignore the <code>IndexedDB</code> one named
-              <code>…_idgp…_0.indexeddb.leveldb</code> — that's the pulled build's data cache, not your profiles.
-            </span>
-          </li>
-          <li>Drag the matching <strong>Extension Settings</strong> folder onto the box below.</li>
-        </ol>
-      </details>
-
       <div id="folderDrop" class="drop" data-kind="folder">
         <p class="drop-main">Drop <code>modheader-dump.txt</code> here</p>
         <p class="drop-sub">

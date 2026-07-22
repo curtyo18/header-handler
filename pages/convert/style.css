@@ -85,12 +85,6 @@ body[data-os="mac"] .os-mac-only, body[data-os="win"] .os-win-only { display: in
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px; line-height: 1.5; color: var(--text); white-space: pre;
 }
-.manual { margin: 4px 0 0; }
-.manual summary {
-  cursor: pointer; color: var(--accent); font-size: 13px; margin: 8px 0;
-}
-.manual[open] summary { margin-bottom: 0; }
-
 /* Drop zone */
 .drop {
   border: 1px dashed var(--border); border-radius: 10px;
