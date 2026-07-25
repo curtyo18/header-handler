@@ -40,6 +40,8 @@ interface MhProfile {
   respHeaders?: unknown;
 }
 
+const NON_STANDARD_COMBINE_HEADERS = new Set(["cookie", "set-cookie", "authorization"]);
+
 // Convert a parsed ModHeader v2 export into a Header Handler Config plus a list
 // of human-readable warnings for every lossy mapping. Never throws on lossy
 // content — only on input that is not a ModHeader export at all. Profiles are
@@ -103,13 +105,16 @@ export function convertModHeader(raw: unknown): ConvertResult {
     for (const h of mhHeaders) {
       const hname = typeof h?.name === "string" ? h.name : "";
       if (hname.trim() === "") continue;
-      if (h.appendMode === true) {
-        warnings.push(`Profile "${name}" header "${hname}": append became overwrite (Set).`);
+      const op = h.appendMode === true ? "append" : "set";
+      if (op === "append" && NON_STANDARD_COMBINE_HEADERS.has(hname.toLowerCase())) {
+        warnings.push(
+          `Profile "${name}" header "${hname}": append uses Chrome's comma-join, which ${hname} does not combine safely — verify server behavior.`,
+        );
       }
       rules.push({
         id: "",
         enabled: h.enabled !== false,
-        op: "set",
+        op,
         name: hname,
         value: String(h.value ?? ""),
       });
