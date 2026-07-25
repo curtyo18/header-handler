@@ -124,37 +124,52 @@ describe("convertModHeader", () => {
     ]);
   });
 
-  it("maps a header with appendMode to an append rule, no warning for a generic header", () => {
+  it("maps a header with appendMode to an append rule, no warning, when Chrome supports append for it", () => {
     const { config, warnings } = convertModHeader({
       profiles: [{
         title: "A",
         urlFilters: [{ enabled: true, urlRegex: "x" }],
-        headers: [{ name: "X-App", value: "v", enabled: true, appendMode: true }],
+        headers: [{ name: "Accept-Language", value: "v", enabled: true, appendMode: true }],
       }],
     });
     expect(config.profiles[0].rules).toEqual([
-      { id: "", enabled: true, op: "append", name: "X-App", value: "v" },
+      { id: "", enabled: true, op: "append", name: "Accept-Language", value: "v" },
     ]);
-    expect(warnings).not.toContainEqual(expect.stringContaining("X-App"));
+    expect(warnings).not.toContainEqual(expect.stringContaining("Accept-Language"));
   });
 
-  it("warns when appendMode targets a header with non-standard combine semantics", () => {
-    const { warnings } = convertModHeader({
+  it("falls back to Set with a warning when appendMode targets a header Chrome doesn't support append for", () => {
+    const { config, warnings } = convertModHeader({
       profiles: [{
         title: "A",
         urlFilters: [{ enabled: true, urlRegex: "x" }],
         headers: [
-          { name: "Cookie", value: "a=1", enabled: true, appendMode: true },
-          { name: "authorization", value: "Bearer x", enabled: true, appendMode: true },
+          { name: "Authorization", value: "Bearer x", enabled: true, appendMode: true },
+          { name: "X-Custom", value: "v", enabled: true, appendMode: true },
         ],
       }],
     });
+    expect(config.profiles[0].rules).toEqual([
+      { id: "", enabled: true, op: "set", name: "Authorization", value: "Bearer x" },
+      { id: "", enabled: true, op: "set", name: "X-Custom", value: "v" },
+    ]);
     expect(warnings).toContainEqual(
-      'Profile "A" header "Cookie": append uses Chrome\'s comma-join, which Cookie does not combine safely — verify server behavior.',
+      'Profile "A" header "Authorization": Chrome doesn\'t support Append for this header — imported as Set (overwrite) instead.',
     );
     expect(warnings).toContainEqual(
-      'Profile "A" header "authorization": append uses Chrome\'s comma-join, which authorization does not combine safely — verify server behavior.',
+      'Profile "A" header "X-Custom": Chrome doesn\'t support Append for this header — imported as Set (overwrite) instead.',
     );
+  });
+
+  it("does not warn when appendMode targets Cookie, since Chrome supports append for it", () => {
+    const { warnings } = convertModHeader({
+      profiles: [{
+        title: "A",
+        urlFilters: [{ enabled: true, urlRegex: "x" }],
+        headers: [{ name: "Cookie", value: "a=1", enabled: true, appendMode: true }],
+      }],
+    });
+    expect(warnings).not.toContainEqual(expect.stringContaining("Cookie"));
   });
 
   it("warns on dropped excludeUrlFilters, methods, and respHeaders", () => {

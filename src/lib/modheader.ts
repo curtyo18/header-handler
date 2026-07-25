@@ -1,4 +1,5 @@
 import type { Config, Profile, HeaderRule, Matcher } from "../types";
+import { isAppendableHeader } from "./dnr-headers";
 
 export interface ConvertResult {
   config: Config;
@@ -39,14 +40,6 @@ interface MhProfile {
   excludeUrlFilters?: unknown;
   respHeaders?: unknown;
 }
-
-// DNR's append operation joins values with a comma; these headers either use
-// a different separator (Cookie: "; ") or aren't meant to repeat at all
-// (Authorization), so a comma-joined duplicate can silently misbehave
-// server-side. Set-Cookie is response-only and this converter only emits
-// request-header rules, but it's included defensively in case a ModHeader
-// export names a request header "Set-Cookie" by mistake.
-const NON_STANDARD_COMBINE_HEADERS = new Set(["cookie", "set-cookie", "authorization"]);
 
 // Convert a parsed ModHeader v2 export into a Header Handler Config plus a list
 // of human-readable warnings for every lossy mapping. Never throws on lossy
@@ -106,16 +99,20 @@ export function convertModHeader(raw: unknown): ConvertResult {
     }
 
     // Header rules: each ModHeader request header becomes a Set rule, or an
-    // Append rule if appendMode is set.
+    // Append rule if appendMode is set AND Chrome supports append for that
+    // header (a fixed allowlist — see dnr-headers.ts). appendMode on an
+    // unsupported header falls back to Set with a warning, since Chrome
+    // would otherwise reject the append rule outright.
     const mhHeaders: MhHeader[] = Array.isArray(p.headers) ? (p.headers as MhHeader[]) : [];
     const rules: HeaderRule[] = [];
     for (const h of mhHeaders) {
       const hname = typeof h?.name === "string" ? h.name : "";
       if (hname.trim() === "") continue;
-      const op = h.appendMode === true ? "append" : "set";
-      if (op === "append" && NON_STANDARD_COMBINE_HEADERS.has(hname.toLowerCase())) {
+      const wantsAppend = h.appendMode === true;
+      const op = wantsAppend && isAppendableHeader(hname) ? "append" : "set";
+      if (wantsAppend && op === "set") {
         warnings.push(
-          `Profile "${name}" header "${hname}": append uses Chrome's comma-join, which ${hname} does not combine safely — verify server behavior.`,
+          `Profile "${name}" header "${hname}": Chrome doesn't support Append for this header — imported as Set (overwrite) instead.`,
         );
       }
       rules.push({
