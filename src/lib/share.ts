@@ -25,7 +25,7 @@ function validateRule(r: unknown): HeaderRule {
   if (!r || typeof r !== "object") throw new Error("Share string has a malformed header rule");
   const o = r as Record<string, unknown>;
   if (typeof o.name !== "string") throw new Error("A header rule is missing its name");
-  if (o.op !== "set" && o.op !== "remove") throw new Error("A header rule has an invalid operation");
+  if (o.op !== "set" && o.op !== "remove" && o.op !== "append") throw new Error("A header rule has an invalid operation");
   if (o.value != null && typeof o.value !== "string") throw new Error("A header rule has an invalid value");
   if (o.matcher != null && !isMatcher(o.matcher)) throw new Error("A header rule has an invalid override matcher");
   return o as unknown as HeaderRule;
