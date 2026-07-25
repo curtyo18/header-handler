@@ -29,6 +29,18 @@ describe("share round-trip", () => {
     expect(out.profiles).toHaveLength(1);
     expect(out.profiles[0].name).toBe("Auth");
   });
+  it("round-trips an append rule", () => {
+    const appendProfile: Profile = {
+      id: "abc2", name: "Compression", enabled: true,
+      matcher: { mode: "domain", value: "example.com" },
+      rules: [{ id: "r2", enabled: true, op: "append", name: "Accept-Encoding", value: "br" }],
+    };
+    const s = encodeShare({ kind: "p", profile: appendProfile });
+    const out = decodeShare(s);
+    if (out.kind !== "p") throw new Error("kind");
+    expect(out.profile.rules[0].op).toBe("append");
+    expect(out.profile.rules[0].value).toBe("br");
+  });
   it("rejects bad prefix", () => {
     expect(() => decodeShare("XX1pblah")).toThrow(/format/i);
   });

@@ -601,6 +601,24 @@ textarea.value-input {
   cursor: pointer;
 }
 
+.help-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 10.5px;
+  cursor: help;
+  flex: none;
+  appearance: none;
+  padding: 0;
+  align-self: center;
+}
+
 .btn-icon-sm.active {
   background: var(--accent-tint);
   border-color: var(--accent-border);

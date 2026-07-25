@@ -124,15 +124,37 @@ describe("convertModHeader", () => {
     ]);
   });
 
-  it("warns when a header uses append mode (becomes Set)", () => {
-    const { warnings } = convertModHeader({
+  it("maps a header with appendMode to an append rule, no warning for a generic header", () => {
+    const { config, warnings } = convertModHeader({
       profiles: [{
         title: "A",
         urlFilters: [{ enabled: true, urlRegex: "x" }],
         headers: [{ name: "X-App", value: "v", enabled: true, appendMode: true }],
       }],
     });
-    expect(warnings).toContainEqual('Profile "A" header "X-App": append became overwrite (Set).');
+    expect(config.profiles[0].rules).toEqual([
+      { id: "", enabled: true, op: "append", name: "X-App", value: "v" },
+    ]);
+    expect(warnings).not.toContainEqual(expect.stringContaining("X-App"));
+  });
+
+  it("warns when appendMode targets a header with non-standard combine semantics", () => {
+    const { warnings } = convertModHeader({
+      profiles: [{
+        title: "A",
+        urlFilters: [{ enabled: true, urlRegex: "x" }],
+        headers: [
+          { name: "Cookie", value: "a=1", enabled: true, appendMode: true },
+          { name: "authorization", value: "Bearer x", enabled: true, appendMode: true },
+        ],
+      }],
+    });
+    expect(warnings).toContainEqual(
+      'Profile "A" header "Cookie": append uses Chrome\'s comma-join, which Cookie does not combine safely — verify server behavior.',
+    );
+    expect(warnings).toContainEqual(
+      'Profile "A" header "authorization": append uses Chrome\'s comma-join, which authorization does not combine safely — verify server behavior.',
+    );
   });
 
   it("warns on dropped excludeUrlFilters, methods, and respHeaders", () => {
