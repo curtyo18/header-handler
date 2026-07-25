@@ -19,6 +19,9 @@ describe("ruleHasBlockingError", () => {
   it("is true when a set value looks like JSON but doesn't parse", () => {
     expect(ruleHasBlockingError({ ...baseRule(), value: "{nope}" })).toBe(true);
   });
+  it("is true when an append value looks like JSON but doesn't parse", () => {
+    expect(ruleHasBlockingError({ ...baseRule(), op: "append", value: "{nope}" })).toBe(true);
+  });
   it("ignores the value for a remove rule", () => {
     expect(ruleHasBlockingError({ ...baseRule(), op: "remove", value: "{nope}" })).toBe(false);
   });
@@ -84,5 +87,25 @@ describe("HeaderRow override toggle", () => {
     fireEvent.click(screen.getByTitle("Override match"));
 
     expect(current.matcher).toEqual({ mode: "contains", value: "example.com" });
+  });
+});
+
+describe("HeaderRow append option", () => {
+  it("renders an Append option in the op select", () => {
+    const { container } = render(<HeaderRow rule={baseRule()} onChange={() => {}} onDelete={() => {}} />);
+    const options = Array.from(container.querySelectorAll(".select-op option")).map((o) => o.textContent);
+    expect(options).toEqual(["Set", "Append", "Remove"]);
+  });
+  it("shows a value editor (not the disabled placeholder) for an append rule", () => {
+    const rule: HeaderRule = { ...baseRule(), op: "append" };
+    const { container } = render(<HeaderRow rule={rule} onChange={() => {}} onDelete={() => {}} />);
+    expect(container.querySelector(".value-disabled")).toBeNull();
+  });
+  it("renders a help icon with a title explaining append semantics", () => {
+    const rule: HeaderRule = { ...baseRule(), op: "append" };
+    const { container } = render(<HeaderRow rule={rule} onChange={() => {}} onDelete={() => {}} />);
+    const help = container.querySelector(".help-icon");
+    expect(help).toBeTruthy();
+    expect(help!.getAttribute("title")).toMatch(/comma/i);
   });
 });
