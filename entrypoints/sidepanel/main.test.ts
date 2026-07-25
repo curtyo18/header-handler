@@ -1,6 +1,12 @@
-import { describe, it, expect } from "vitest";
-import { matchChips, matchedHighlightNames, opGlyph, resolveMatches } from "./main";
+import { describe, it, expect, vi } from "vitest";
 import type { Config, Profile, HeaderRule } from "../../src/types";
+
+vi.mock("../../src/lib/storage", () => ({
+  configStore: { getValue: async () => null, setValue: async () => {}, watch: () => () => {} },
+  logStore: { getValue: async () => [], setValue: async () => {}, watch: () => () => {} },
+}));
+
+const { matchChips, matchedHighlightNames, opGlyph, resolveMatches } = await import("./main");
 
 function profileWith(rules: HeaderRule[]): Profile {
   return {
