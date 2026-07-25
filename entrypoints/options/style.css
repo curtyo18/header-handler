@@ -614,6 +614,8 @@ textarea.value-input {
   font-size: 10.5px;
   cursor: help;
   flex: none;
+  appearance: none;
+  padding: 0;
 }
 
 .btn-icon-sm.active {
