@@ -40,6 +40,12 @@ interface MhProfile {
   respHeaders?: unknown;
 }
 
+// DNR's append operation joins values with a comma; these headers either use
+// a different separator (Cookie: "; ") or aren't meant to repeat at all
+// (Authorization), so a comma-joined duplicate can silently misbehave
+// server-side. Set-Cookie is response-only and this converter only emits
+// request-header rules, but it's included defensively in case a ModHeader
+// export names a request header "Set-Cookie" by mistake.
 const NON_STANDARD_COMBINE_HEADERS = new Set(["cookie", "set-cookie", "authorization"]);
 
 // Convert a parsed ModHeader v2 export into a Header Handler Config plus a list
@@ -99,7 +105,8 @@ export function convertModHeader(raw: unknown): ConvertResult {
       );
     }
 
-    // Header rules: each ModHeader request header becomes a Set rule.
+    // Header rules: each ModHeader request header becomes a Set rule, or an
+    // Append rule if appendMode is set.
     const mhHeaders: MhHeader[] = Array.isArray(p.headers) ? (p.headers as MhHeader[]) : [];
     const rules: HeaderRule[] = [];
     for (const h of mhHeaders) {
