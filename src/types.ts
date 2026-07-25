@@ -5,7 +5,7 @@ export interface Matcher {
   value: string;
 }
 
-export type HeaderOp = "set" | "remove";
+export type HeaderOp = "set" | "remove" | "append";
 
 export interface HeaderRule {
   id: string;
