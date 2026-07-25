@@ -209,16 +209,15 @@ export function HeaderRow({
           <option value="append">Append</option>
           <option value="remove">Remove</option>
         </select>
-        {rule.op === "append" && (
-          <button
-            type="button"
-            class="help-icon"
-            title="Adds this value onto the header's existing value using a comma, rather than replacing it. If the header doesn't already have a value, this behaves like Set. Not supported: a custom separator, or combining with headers whose own syntax doesn't use commas (e.g. Cookie)."
-            aria-label="How Append works"
-          >
-            ?
-          </button>
-        )}
+        <button
+          type="button"
+          class="help-icon"
+          style={rule.op === "append" ? undefined : { visibility: "hidden" }}
+          title="Adds this value onto the header's existing value using a comma, rather than replacing it. If the header doesn't already have a value, this behaves like Set. Not supported: a custom separator, or combining with headers whose own syntax doesn't use commas (e.g. Cookie)."
+          aria-label="How Append works"
+        >
+          ?
+        </button>
         <input
           type="text"
           class="input input-mono header-name-input"

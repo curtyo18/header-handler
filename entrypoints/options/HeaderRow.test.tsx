@@ -108,4 +108,10 @@ describe("HeaderRow append option", () => {
     expect(help).toBeTruthy();
     expect(help!.getAttribute("title")).toMatch(/comma/i);
   });
+  it("keeps the help icon in the DOM (visually hidden) for non-append rules, to avoid row misalignment", () => {
+    const { container } = render(<HeaderRow rule={baseRule()} onChange={() => {}} onDelete={() => {}} />);
+    const help = container.querySelector(".help-icon") as HTMLElement | null;
+    expect(help).toBeTruthy();
+    expect(help!.style.visibility).toBe("hidden");
+  });
 });

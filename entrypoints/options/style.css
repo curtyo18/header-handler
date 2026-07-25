@@ -616,6 +616,7 @@ textarea.value-input {
   flex: none;
   appearance: none;
   padding: 0;
+  align-self: center;
 }
 
 .btn-icon-sm.active {

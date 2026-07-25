@@ -38,7 +38,7 @@ interface ResolvedMatch {
   rule: HeaderRule;
 }
 
-function resolveMatches(cfg: Config | null, matchedRuleIds: string[]): ResolvedMatch[] {
+export function resolveMatches(cfg: Config | null, matchedRuleIds: string[]): ResolvedMatch[] {
   if (!cfg) return [];
   const out: ResolvedMatch[] = [];
   for (const id of matchedRuleIds) {
@@ -50,11 +50,25 @@ function resolveMatches(cfg: Config | null, matchedRuleIds: string[]): ResolvedM
   return out;
 }
 
-function matchChips(matches: ResolvedMatch[]): MatchedChip[] {
+export function opGlyph(op: HeaderRule["op"]): string {
+  if (op === "set") return "+";
+  if (op === "append") return "~";
+  return "−";
+}
+
+export function matchChips(matches: ResolvedMatch[]): MatchedChip[] {
   return matches.map(({ profile, rule }) => ({
     key: `${profile.id}:${rule.id}`,
-    label: `${profile.name} › ${rule.op === "set" ? "+" : "−"}${rule.name}`,
+    label: `${profile.name} › ${opGlyph(rule.op)}${rule.name}`,
   }));
+}
+
+export function matchedHighlightNames(matches: ResolvedMatch[]): Set<string> {
+  return new Set(
+    matches
+      .filter((m) => m.rule.op === "set" || m.rule.op === "append")
+      .map((m) => m.rule.name.toLowerCase()),
+  );
 }
 
 function LogCard({ entry, cfg }: { entry: LogEntry; cfg: Config | null }) {
@@ -62,9 +76,7 @@ function LogCard({ entry, cfg }: { entry: LogEntry; cfg: Config | null }) {
   const { host, path } = splitUrl(entry.url);
   const matches = resolveMatches(cfg, entry.matchedRuleIds);
   const chips = matchChips(matches);
-  const matchedSetNames = new Set(
-    matches.filter((m) => m.rule.op === "set").map((m) => m.rule.name.toLowerCase()),
-  );
+  const matchedNames = matchedHighlightNames(matches);
 
   return (
     <div class="log-card">
@@ -100,7 +112,7 @@ function LogCard({ entry, cfg }: { entry: LogEntry; cfg: Config | null }) {
       {expanded && (
         <div class="log-headers">
           {entry.requestHeaders.map((h, i) => {
-            const matched = matchedSetNames.has(h.name.toLowerCase());
+            const matched = matchedNames.has(h.name.toLowerCase());
             return (
               <div class={`log-header-row ${matched ? "matched" : ""}`} key={i}>
                 <span class="log-header-name">{h.name}:</span> {h.value}
@@ -152,4 +164,6 @@ function App() {
   );
 }
 
-render(<App />, document.getElementById("app")!);
+// Guarded so importing this module in a test (no #app element) doesn't render/throw.
+const rootEl = document.getElementById("app");
+if (rootEl) render(<App />, rootEl);
