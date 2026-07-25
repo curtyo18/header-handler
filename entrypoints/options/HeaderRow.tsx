@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { HeaderRule, Matcher } from "../../src/types";
 import { byteLength, formatJson, minifyJson, validateJson } from "../../src/lib/json-value";
+import { isAppendableHeader } from "../../src/lib/dnr-headers";
 import { MatcherControl, regexError } from "./MatcherControl";
 import { highlightJson } from "./jsonHighlight";
 
@@ -18,6 +19,7 @@ const looksLikeJson = (s: string) => {
 // or its value looks like JSON but fails to parse.
 export function ruleHasBlockingError(rule: HeaderRule): boolean {
   if (rule.matcher && regexError(rule.matcher.mode, rule.matcher.value)) return true;
+  if (rule.op === "append" && rule.name.trim() !== "" && !isAppendableHeader(rule.name)) return true;
   const v = (rule.value ?? "").trim();
   if ((rule.op === "set" || rule.op === "append") && (v.startsWith("{") || v.startsWith("["))) {
     if (!validateJson(v).valid) return true;
@@ -213,7 +215,7 @@ export function HeaderRow({
           type="button"
           class="help-icon"
           style={rule.op === "append" ? undefined : { visibility: "hidden" }}
-          title="Adds this value onto the header's existing value using a comma, rather than replacing it. If the header doesn't already have a value, this behaves like Set. Not supported: a custom separator, or combining with headers whose own syntax doesn't use commas (e.g. Cookie)."
+          title="Adds this value onto the header's existing value — Chrome performs the join internally using the appropriate separator for that header (extension code never reads the old value). Only works for a fixed set of headers Chrome supports append for (Accept, Accept-Encoding, Accept-Language, Cache-Control, Cookie, User-Agent, X-Forwarded-For, and others) — not Authorization or custom headers. This row is flagged as blocked if the header name isn't one Chrome supports."
           aria-label="How Append works"
         >
           ?

@@ -3,6 +3,8 @@
 Date: 2026-07-25
 Status: accepted
 
+**Correction (2026-07-25, post-merge):** the original version of this spec assumed DNR's `append` operation joins values with a plain comma for every header, and that Cookie/Set-Cookie/Authorization were merely "risky" cases needing a soft warning. Verified afterward against Chrome's own primary docs (https://developer.chrome.com/docs/extensions/reference/api/declarativeNetRequest): (1) Chrome only supports `append` at all for a fixed 21-header allowlist — Authorization is not on it, so appending to it is rejected outright, not "risky"; (2) the separator is header-appropriate, not always comma (confirmed by live testing: `User-Agent` uses a space) — Chrome's docs don't specify per-header separator characters beyond "the browser will use the appropriate separator where possible." The sections below are corrected to match. See `src/lib/dnr-headers.ts` for the allowlist and the `fix/append-allowlist-validation` branch for the follow-up validation work this correction describes.
+
 ## Goal
 
 Add a third header operation, **Append**, alongside the existing Set and
@@ -21,12 +23,26 @@ organization force-installs on its own managed fleet via enterprise policy,
 which is not this extension's distribution model.
 
 DNR exposes exactly one native operation for this: `HeaderOperation.append`,
-which joins the new value onto the existing one using DNR's built-in
-comma-delimited join — no custom separator, no read-and-compute. Confirmed via
-research that ModHeader itself, after its own MV3 migration, maps its
-`appendMode` onto this same DNR `append` operation — so this design matches
-ModHeader's current actual mechanism, not just an approximation of its old
-MV2 behavior.
+which joins the new value onto the existing one internally, using whatever
+separator Chrome considers appropriate for that specific header — no custom
+separator, no read-and-compute, and Chrome's docs don't enumerate the exact
+character per header (confirmed by live testing: `User-Agent` uses a space).
+Confirmed via research that ModHeader itself, after its own MV3 migration,
+maps its `appendMode` onto this same DNR `append` operation — so this design
+matches ModHeader's current actual mechanism, not just an approximation of
+its old MV2 behavior.
+
+**Header allowlist (confirmed against Chrome's own docs):** `append` is only
+supported for a fixed set of 21 request headers — `accept`, `accept-encoding`,
+`accept-language`, `access-control-request-headers`, `cache-control`,
+`connection`, `content-language`, `cookie`, `forwarded`, `if-match`,
+`if-none-match`, `keep-alive`, `range`, `te`, `trailer`, `transfer-encoding`,
+`upgrade`, `user-agent`, `via`, `want-digest`, `x-forwarded-for` (see
+`src/lib/dnr-headers.ts`). Notably `authorization` is **not** on this list —
+appending to it, or to any custom header, is rejected by Chrome outright.
+The editor validates against this allowlist (`ruleHasBlockingError` in
+`HeaderRow.tsx`) so a rule targeting an unsupported header is flagged before
+it ever reaches DNR.
 
 **DNR ordering constraint:** once a rule appends to a header, Chrome only
 permits *lower-priority* rules touching that same header to also append — a
@@ -69,14 +85,15 @@ unaffected.
 
 Per header entry in a ModHeader profile's `headers` array:
 
-- `h.appendMode === true` → `op: "append"` (previously always `op: "set"` +
-  warning).
-- If the header name (case-insensitive) is one of `Cookie`, `Set-Cookie`, or
-  `Authorization` → push warning:
-  `Profile "<name>" header "<hname>": append uses Chrome's comma-join, which
-  <hname> does not combine safely — verify server behavior.`
-- Every other header with `appendMode: true` → no warning; treated as a
-  faithful, lossless conversion (matches ModHeader's own current mechanism).
+- `h.appendMode === true` and the header is on Chrome's append allowlist
+  (`isAppendableHeader`) → `op: "append"`, no warning — a faithful, lossless
+  conversion (matches ModHeader's own current mechanism).
+- `h.appendMode === true` but the header is **not** on the allowlist (e.g.
+  `Authorization`, or any custom header) → falls back to `op: "set"` (the
+  original pre-append-feature behavior) with a warning:
+  `Profile "<name>" header "<hname>": Chrome doesn't support Append for this
+  header — imported as Set (overwrite) instead.`
+  This avoids ever emitting an append rule Chrome would reject outright.
 
 ## Editor UX
 
@@ -84,14 +101,15 @@ Per header entry in a ModHeader profile's `headers` array:
   before `Remove` (mirrors the Set→Append value continuity; Remove stays
   last since it's the odd one out with no value field).
 - A `?` icon next to the `<select>` (or inline help text shown when `Append`
-  is selected) reads roughly: *"Adds this value onto the header's existing
-  value using a comma, rather than replacing it. If the header doesn't
-  already have a value, this behaves like Set. Not supported: a custom
-  separator, or combining with headers whose own syntax doesn't use commas
-  (e.g. Cookie)."*
-- No new validation blocks saving an Append rule beyond what Set already
-  requires (non-empty value recommended but not enforced, consistent with
-  existing Set behavior).
+  is selected) explains that Chrome performs the join internally using
+  whatever separator it considers appropriate for that header, that
+  extension code never reads the old value, and that only a fixed set of
+  headers support it at all (not Authorization or custom headers).
+- `ruleHasBlockingError` blocks an Append rule whose header name isn't on
+  Chrome's append allowlist (`isAppendableHeader`, `src/lib/dnr-headers.ts`),
+  the same way it already blocks an invalid override-matcher regex or
+  unparseable JSON value — flagged before the rule ever reaches DNR, not
+  discovered only via the generic DNR-rejection banner after saving.
 
 ## Error handling
 

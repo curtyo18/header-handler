@@ -25,6 +25,15 @@ describe("ruleHasBlockingError", () => {
   it("ignores the value for a remove rule", () => {
     expect(ruleHasBlockingError({ ...baseRule(), op: "remove", value: "{nope}" })).toBe(false);
   });
+  it("is true for an append rule on a header Chrome doesn't support appending to", () => {
+    expect(ruleHasBlockingError({ ...baseRule(), op: "append", name: "Authorization", value: "x" })).toBe(true);
+  });
+  it("is false for an append rule on a header Chrome does support", () => {
+    expect(ruleHasBlockingError({ ...baseRule(), op: "append", name: "Cookie", value: "x" })).toBe(false);
+  });
+  it("ignores the allowlist check while the header name is still empty", () => {
+    expect(ruleHasBlockingError({ ...baseRule(), op: "append", name: "", value: "x" })).toBe(false);
+  });
 });
 
 describe("HeaderRow blocked state", () => {
@@ -106,7 +115,7 @@ describe("HeaderRow append option", () => {
     const { container } = render(<HeaderRow rule={rule} onChange={() => {}} onDelete={() => {}} />);
     const help = container.querySelector(".help-icon");
     expect(help).toBeTruthy();
-    expect(help!.getAttribute("title")).toMatch(/comma/i);
+    expect(help!.getAttribute("title")).toMatch(/appropriate separator/i);
   });
   it("keeps the help icon in the DOM (visually hidden) for non-append rules, to avoid row misalignment", () => {
     const { container } = render(<HeaderRow rule={baseRule()} onChange={() => {}} onDelete={() => {}} />);
