@@ -11,6 +11,7 @@ const cfg: Config = {
       { id: "r1", enabled: true, op: "set", name: "X-A", value: "1" },
       { id: "r2", enabled: false, op: "set", name: "X-Off", value: "2" },
       { id: "r3", enabled: true, op: "remove", name: "Cookie" },
+      { id: "r4", enabled: true, op: "append", name: "X-App", value: "3" },
     ],
   }],
 };
@@ -18,7 +19,7 @@ const cfg: Config = {
 describe("compileRules", () => {
   it("emits one rule per enabled header rule with modifyHeaders action", () => {
     const rules = compileRules(cfg);
-    expect(rules).toHaveLength(2);
+    expect(rules).toHaveLength(3);
     const set = rules.find((r) => r.action.requestHeaders?.[0].header === "x-a")!;
     expect(set.action.requestHeaders![0].operation).toBe("set");
     expect(set.action.requestHeaders![0].value).toBe("1");
@@ -26,6 +27,12 @@ describe("compileRules", () => {
     const rm = rules.find((r) => r.action.requestHeaders?.[0].header === "cookie")!;
     expect(rm.action.requestHeaders![0].operation).toBe("remove");
     expect(rm.action.requestHeaders![0].value).toBeUndefined();
+  });
+  it("compiles an append rule to DNR's native append operation with its value", () => {
+    const rules = compileRules(cfg);
+    const append = rules.find((r) => r.action.requestHeaders?.[0].header === "x-app")!;
+    expect(append.action.requestHeaders![0].operation).toBe("append");
+    expect(append.action.requestHeaders![0].value).toBe("3");
   });
   it("uses per-rule matcher over profile matcher when present", () => {
     const c = structuredClone(cfg);
@@ -54,21 +61,21 @@ describe("compileRules", () => {
     c.profiles[0].rules[0].matcher = { mode: "contains", value: "" };
     const rules = compileRules(c);
     expect(rules.find((r) => r.action.requestHeaders?.[0].header === "x-a")).toBeUndefined();
-    expect(rules).toHaveLength(1); // only the Cookie-remove rule remains
+    expect(rules).toHaveLength(2); // Cookie-remove and X-App-append rules remain
   });
   it("skips an empty-value domain matcher too (empty requestDomains entry is just as invalid)", () => {
     const c = structuredClone(cfg);
     c.profiles[0].rules[0].matcher = { mode: "domain", value: "" };
     const rules = compileRules(c);
     expect(rules.find((r) => r.action.requestHeaders?.[0].header === "x-a")).toBeUndefined();
-    expect(rules).toHaveLength(1);
+    expect(rules).toHaveLength(2);
   });
   it("skips a rule with a blank header name (DNR rejects an empty header field)", () => {
     const c = structuredClone(cfg);
     c.profiles[0].rules[0].name = "  ";
     const rules = compileRules(c);
     expect(rules.find((r) => r.action.requestHeaders?.[0].header === "x-a")).toBeUndefined();
-    expect(rules).toHaveLength(1);
+    expect(rules).toHaveLength(2);
   });
   it("strips CR/LF from a set value (raw newlines make DNR reject the whole batch)", () => {
     const c = structuredClone(cfg);
@@ -81,7 +88,7 @@ describe("compileRules", () => {
     (c.profiles[0].rules[0] as { matcher?: unknown }).matcher = { mode: "evil", value: "x" };
     const rules = compileRules(c);
     expect(rules.find((r) => r.action.requestHeaders?.[0].header === "x-a")).toBeUndefined();
-    expect(rules).toHaveLength(1);
+    expect(rules).toHaveLength(2);
   });
 });
 

@@ -52,8 +52,8 @@ export function compileRules(cfg: Config): chrome.declarativeNetRequest.Rule[] {
           type: "modifyHeaders" as chrome.declarativeNetRequest.RuleActionType,
           requestHeaders: [{
             header: rule.name.toLowerCase(),
-            operation: (rule.op === "set" ? "set" : "remove") as chrome.declarativeNetRequest.HeaderOperation,
-            ...(rule.op === "set" ? { value: sanitizeHeaderValue(rule.value ?? "") } : {}),
+            operation: rule.op as chrome.declarativeNetRequest.HeaderOperation,
+            ...(rule.op !== "remove" ? { value: sanitizeHeaderValue(rule.value ?? "") } : {}),
           }],
         },
         condition: { ...cond, resourceTypes: ALL_RESOURCE_TYPES },
