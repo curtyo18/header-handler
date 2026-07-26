@@ -13,9 +13,12 @@ const NEW_ISSUE_URL = `${REPO_URL}/issues/new`;
 function AppIcon() {
   return (
     <div class="app-icon">
-      <span class="bar bar-accent" />
-      <span class="bar" />
-      <span class="bar" />
+      <svg viewBox="0 0 100 100" fill="currentColor" aria-hidden="true">
+        <rect x="22" y="20" width="56" height="10" rx="5" />
+        <rect x="30" y="37" width="10" height="40" rx="5" />
+        <rect x="60" y="37" width="10" height="40" rx="5" />
+        <rect x="30" y="52" width="40" height="9" rx="4.5" />
+      </svg>
     </div>
   );
 }

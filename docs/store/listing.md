@@ -74,11 +74,18 @@ before publishing.
 
 ## Screenshots (≥1 required; 1280×800 or 640×400)
 
-Three 1280×800 PNGs are ready in `docs/store/screenshots/` — upload directly:
+Five 1280×800 PNGs are ready in `docs/store/screenshots/` — upload in this order:
 
-- `01-options.png` — Options page: a profile's matcher + header-rules table, one rule editing a JSON value.
-- `02-popup.png` — popup: master switch above per-profile toggles.
-- `03-live-log.png` — side panel: a matched request with per-rule chips.
+- `01-hero.png` — "HTTP headers, on your terms."
+- `02-rules.png` — "Set, overwrite, or strip any request header."
+- `03-livelog.png` — "See exactly what matched."
+- `04-share.png` — "Your whole setup, in one string."
+- `05-localdev.png` — "Built for local dev & debugging."
+
+## Promo tiles
+
+- `docs/store/screenshots/promo-440x280.png` — small promo tile, shown in search/category listings.
+- `docs/store/screenshots/marquee-1400x560.png` — marquee promo tile, used only if Google features the extension.
 
 ## Homepage URL
 
@@ -194,7 +201,7 @@ Certification preamble (Google's text, shown for reference):
 - [ ] MV3 package built at the current `package.json` version — the latest `.output/header-handler-<version>-chrome.zip` from `npm run zip`
 - [ ] Privacy policy live — GitHub Pages (`main` / `/docs`), confirmed rendering in a browser
 - [x] 128×128 icon present (`public/icons/128.png`)
-- [x] ≥1 screenshot — three 1280×800 shots in `docs/store/screenshots/`
+- [x] ≥1 screenshot — five 1280×800 shots + promo/marquee tiles in `docs/store/screenshots/`
 - [ ] CWS developer account + $5 fee + 2-Step Verification + verified contact email
 - [ ] **Store listing tab:** name, summary, description, category, language, icon, screenshots, homepage URL, support URL
 - [ ] **Privacy tab:** single-purpose, per-permission justifications, remote-code = No, data-usage per-category + three certifications + policy URL, reviewer notes
