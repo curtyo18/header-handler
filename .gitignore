@@ -4,3 +4,4 @@ node_modules/
 *.zip
 .claude/
 *modheader-dump*
+docs/design_handoff_store_images/

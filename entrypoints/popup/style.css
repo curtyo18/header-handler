@@ -73,27 +73,18 @@ button {
   background: var(--surface);
   border: 1px solid var(--border);
   display: flex;
-  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  gap: 3px;
-  padding: 0 5px;
+  padding: 5px;
+  box-sizing: border-box;
   flex: none;
+  color: var(--accent);
 }
 
-.app-icon .bar {
-  height: 2px;
-  width: 85%;
-  background: var(--muted-3);
-  border-radius: 2px;
-}
-
-.app-icon .bar:nth-child(2) {
-  width: 70%;
-}
-
-.app-icon .bar-accent {
-  background: var(--accent);
+.app-icon svg {
+  display: block;
   width: 100%;
+  height: 100%;
 }
 
 .popup-title {
