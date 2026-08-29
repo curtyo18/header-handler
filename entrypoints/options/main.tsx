@@ -322,6 +322,7 @@ export function App() {
                 <div class="rules-col-header">
                   <span class="col-check" />
                   <span class="col-op">Op</span>
+                  <span class="col-help" />
                   <span class="col-name">Header</span>
                   <span class="col-value">Value</span>
                   <span class="col-actions" />
