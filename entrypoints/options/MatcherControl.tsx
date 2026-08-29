@@ -28,7 +28,7 @@ const HINTS: Record<MatchMode, string> = {
   exact: "e.g. matches only https://api.example.com/v1",
   starts: "e.g. matches URLs starting with https://api.",
   ends: "e.g. matches URLs ending with /graphql",
-  domain: "matches host and subdomains",
+  domain: "e.g. example.com matches example.com and api.example.com",
   regex: "e.g. ^https://.*\\.dev/",
 };
 
