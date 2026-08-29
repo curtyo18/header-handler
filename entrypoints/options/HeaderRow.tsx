@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { HeaderRule, Matcher } from "../../src/types";
 import { byteLength, formatJson, minifyJson, validateJson } from "../../src/lib/json-value";
 import { isAppendableHeader } from "../../src/lib/dnr-headers";
+import { isAllUrls, ruleSendsHeadersEverywhere } from "../../src/lib/matcher";
 import { MatcherControl, regexError } from "./MatcherControl";
 import { highlightJson } from "./jsonHighlight";
 
@@ -162,17 +163,29 @@ export function HeaderRow({
   onChange,
   onDelete,
   onEditing,
+  profileMatcher,
+  profileEnabled = true,
 }: {
   rule: HeaderRule;
   onChange: (next: HeaderRule) => void;
   onDelete: () => void;
   onEditing?: () => void;
+  profileMatcher?: Matcher;
+  profileEnabled?: boolean;
 }) {
   const [overrideOpen, setOverrideOpen] = useState(!!rule.matcher);
   // A rule with a blocking error (broken override regex, unparseable JSON value)
   // is skipped by compileRules, so it never reaches DNR — say so, rather than
   // letting it look active. This is the save-gate scaffold now wired in (#4).
   const blocked = ruleHasBlockingError(rule);
+  // compileRules emits nothing at all for a disabled profile, so neither the card
+  // note nor the override panel may warn about one. ruleSendsHeadersEverywhere
+  // can't see the profile, so that gate is applied by the caller (matcher.ts).
+  const sendsEverywhere = profileEnabled && ruleSendsHeadersEverywhere(rule, profileMatcher);
+  // The profile-level nudge only speaks for the profile matcher. A rule whose own
+  // override is all-URLs escapes it entirely — and survives collapsing the panel,
+  // which only drops an empty override — so it needs its own persistent note.
+  const overrideSendsEverywhere = sendsEverywhere && !!rule.matcher && isAllUrls(rule.matcher);
 
   function toggleOverride() {
     if (overrideOpen) {
@@ -251,10 +264,20 @@ export function HeaderRow({
           ⚠ This rule won't apply until the highlighted error is fixed.
         </div>
       )}
+      {overrideSendsEverywhere && (
+        <div class="helper helper-warn rule-scope-note" role="alert">
+          ⚠ This rule's override sends these headers to every URL.
+        </div>
+      )}
       {overrideOpen && rule.matcher && (
         <div class="override-panel">
           <div class="label-sm">OVERRIDE MATCH FOR THIS RULE</div>
-          <MatcherControl matcher={rule.matcher} onChange={(matcher: Matcher) => onChange({ ...rule, matcher })} compact />
+          <MatcherControl
+            matcher={rule.matcher}
+            onChange={(matcher: Matcher) => onChange({ ...rule, matcher })}
+            compact
+            escalated={sendsEverywhere}
+          />
           <button type="button" class="link-remove" onClick={removeOverride}>
             Remove override
           </button>

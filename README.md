@@ -25,11 +25,11 @@ Open the popup from the toolbar icon to toggle profiles; open Options (gear icon
 
 ### Profiles and header rules
 
-A **profile** bundles a default **matcher** (which requests it applies to) and a list of **header rules**. Each rule is a Set or Remove operation on one header name, and may carry its own matcher that overrides the profile's for that rule only. The applied rule set at any time is the union of all enabled profiles.
+A **profile** bundles a default **matcher** (which requests it applies to) and a list of **header rules**. Each rule is a Set or Remove operation on one header name, and may carry its own matcher that overrides the profile's for that rule only. The applied rule set at any time is the union of all enabled profiles. A newly created profile starts on the All URLs matcher so it works immediately; narrow it to the sites you actually want it on.
 
 ### Matchers
 
-A matcher decides which requests a profile or rule applies to, using one of six modes: Contains, Exact, Starts with, Ends with, Domain, or Custom regex.
+A matcher decides which requests a profile or rule applies to. It's either **All URLs** — the default for a new profile, matching every request — or one of six scoped modes: Contains, Exact, Starts with, Ends with, Domain, or Custom regex. While a profile is on All URLs the editor shows a reminder to scope it, since its headers go to every site you visit.
 
 ### Live log
 

@@ -16,6 +16,7 @@
   --accent-border: #33465f;
   --success: #5fd08a;
   --danger: #f2777a;
+  --warn: #e0b96a;
 }
 
 * {
@@ -424,6 +425,12 @@ textarea {
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
 }
 
+/* Amber, matching .size-banner — a scope warning, not a hard error like
+   .helper-danger (which means "this rule cannot compile"). */
+.helper-warn {
+  color: var(--warn);
+}
+
 .dnr-banner {
   display: flex;
   align-items: flex-start;
@@ -449,19 +456,22 @@ textarea {
   gap: 8px;
   margin: 0 24px 12px;
   padding: 10px 14px;
-  border: 1px solid #e0b96a;
+  border: 1px solid var(--warn);
   border-radius: 8px;
   background: rgba(224, 185, 106, 0.12);
-  color: #e0b96a;
+  color: var(--warn);
   font-size: 12px;
   line-height: 1.4;
 }
 
+/* Padding and fixed-width columns must mirror .rule-row exactly (including the
+   .help-icon spacer, which has no heading) or the headings drift off the fields
+   they label. */
 .rules-col-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 4px 6px;
+  padding: 0 10px 6px;
   font-size: 9.5px;
   color: var(--muted-2);
   text-transform: uppercase;
@@ -478,17 +488,24 @@ textarea {
   flex: none;
 }
 
-.col-name {
-  width: 132px;
+/* Stands in for the .help-icon button in .rule-row (18px + the 8px gap). */
+.col-help {
+  width: 18px;
   flex: none;
 }
 
+.col-name {
+  flex: 1 1 132px;
+  min-width: 132px;
+  max-width: 320px;
+}
+
 .col-value {
-  flex: 1;
+  flex: 3 1 0;
 }
 
 .col-actions {
-  width: 60px;
+  width: 56px;
   flex: none;
 }
 
@@ -504,7 +521,8 @@ textarea {
   border-color: var(--danger);
 }
 
-.rule-blocked-note {
+.rule-blocked-note,
+.rule-scope-note {
   margin: 0 10px 8px;
 }
 
@@ -535,16 +553,23 @@ textarea {
   color: var(--danger);
 }
 
+/* Long header names (Access-Control-Allow-Credentials, X-Forwarded-Proto) were
+   truncated in a fixed 132px box with no way to widen it (#37). Flex like
+   .value-input next to it, with 132px as the floor so narrow widths look
+   exactly as before, and a cap so the name can't crowd out the value field. */
 .header-name-input {
-  width: 132px;
+  flex: 1 1 132px;
+  min-width: 132px;
+  max-width: 320px;
   height: 28px;
   padding: 0 9px;
   font-size: 11.5px;
-  flex: none;
 }
 
+/* Given three shares to .header-name-input's one: the value is the field users
+   edit most, and an even split squeezed it to ~140px on a 640px row. */
 .value-input {
-  flex: 1;
+  flex: 3 1 0;
   min-height: 28px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -639,7 +664,7 @@ textarea.value-input {
 
 /* JSON value editor */
 .json-editor {
-  flex: 1;
+  flex: 3 1 0;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 7px;

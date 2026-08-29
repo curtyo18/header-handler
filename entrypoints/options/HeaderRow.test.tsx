@@ -124,3 +124,83 @@ describe("HeaderRow append option", () => {
     expect(help!.style.visibility).toBe("hidden");
   });
 });
+
+describe("HeaderRow all-URLs override indicator", () => {
+  const ALL: HeaderRule["matcher"] = { mode: "regex", value: ".*" };
+  const NARROW = { mode: "domain", value: "example.com" } as const;
+  const NOTE = /override sends these headers to every URL/i;
+
+  it("flags a live all-URLs override even while the override panel is collapsed", () => {
+    const rule: HeaderRule = { ...baseRule(), matcher: { ...ALL! } };
+    const { container } = render(
+      <HeaderRow rule={rule} onChange={() => {}} onDelete={() => {}} profileMatcher={NARROW} />,
+    );
+    fireEvent.click(screen.getByTitle("Override match")); // collapse the panel
+    const note = container.querySelector(".rule-scope-note.helper-warn");
+    expect(note).toBeTruthy();
+    expect(note!.textContent).toMatch(NOTE);
+  });
+
+  it("does not flag a rule whose override is narrow", () => {
+    const rule: HeaderRule = { ...baseRule(), matcher: { ...NARROW } };
+    render(<HeaderRow rule={rule} onChange={() => {}} onDelete={() => {}} profileMatcher={NARROW} />);
+    expect(screen.queryByText(NOTE)).toBeNull();
+  });
+
+  it("does not flag a rule with no override — the profile-level nudge covers that", () => {
+    render(
+      <HeaderRow rule={baseRule()} onChange={() => {}} onDelete={() => {}} profileMatcher={{ ...ALL! }} />,
+    );
+    expect(screen.queryByText(NOTE)).toBeNull();
+  });
+
+  it("does not flag a disabled or Remove rule — neither sends anything", () => {
+    render(
+      <HeaderRow
+        rule={{ ...baseRule(), enabled: false, matcher: { ...ALL! } }}
+        onChange={() => {}}
+        onDelete={() => {}}
+        profileMatcher={NARROW}
+      />,
+    );
+    expect(screen.queryByText(NOTE)).toBeNull();
+    cleanup();
+    render(
+      <HeaderRow
+        rule={{ ...baseRule(), op: "remove", matcher: { ...ALL! } }}
+        onChange={() => {}}
+        onDelete={() => {}}
+        profileMatcher={NARROW}
+      />,
+    );
+    expect(screen.queryByText(NOTE)).toBeNull();
+  });
+
+  it("does not flag an all-URLs override on a disabled profile — compileRules emits nothing", () => {
+    const rule: HeaderRule = { ...baseRule(), matcher: { ...ALL! } };
+    const { container } = render(
+      <HeaderRow
+        rule={rule}
+        onChange={() => {}}
+        onDelete={() => {}}
+        profileMatcher={NARROW}
+        profileEnabled={false}
+      />,
+    );
+    expect(screen.queryByText(NOTE)).toBeNull();
+    // The override panel's own nudge stays calm too, matching the profile control.
+    const helper = container.querySelector(".override-panel .helper")!;
+    expect(helper.classList.contains("helper-warn")).toBe(false);
+    expect(helper.textContent).toMatch(/Applies to every URL/);
+  });
+
+  it("escalates the override panel's own nudge for a live all-URLs override", () => {
+    const rule: HeaderRule = { ...baseRule(), matcher: { ...ALL! } };
+    const { container } = render(
+      <HeaderRow rule={rule} onChange={() => {}} onDelete={() => {}} profileMatcher={NARROW} />,
+    );
+    const helper = container.querySelector(".override-panel .helper")!;
+    expect(helper.classList.contains("helper-warn")).toBe(true);
+    expect(helper.textContent).toMatch(/sent to every URL/);
+  });
+});

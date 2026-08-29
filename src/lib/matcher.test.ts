@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { matcherToDnrCondition, evaluateMatcher, escapeUrlFilter, normalizeDomain } from "./matcher";
+import { matcherToDnrCondition, evaluateMatcher, escapeUrlFilter, normalizeDomain, ALL_URLS_MATCHER, isAllUrls, ruleSendsHeadersEverywhere, sendsHeadersEverywhere } from "./matcher";
+import type { HeaderRule, Matcher, Profile } from "../types";
 
 describe("escapeUrlFilter", () => {
   it("escapes DNR anchor/wildcard chars", () => {
@@ -86,5 +87,142 @@ describe("evaluateMatcher", () => {
     expect(evaluateMatcher({ mode: "ends", value: "" }, u)).toBe(false);
     expect(evaluateMatcher({ mode: "regex", value: "" }, u)).toBe(false);
     expect(evaluateMatcher({ mode: "contains", value: "   " }, u)).toBe(false);
+  });
+});
+
+describe("all-URLs matcher", () => {
+  it("recognizes exactly the regex .* shape", () => {
+    expect(isAllUrls(ALL_URLS_MATCHER)).toBe(true);
+    expect(isAllUrls({ mode: "regex", value: ".*" })).toBe(true);
+    expect(isAllUrls({ mode: "regex", value: ".+" })).toBe(false);
+    expect(isAllUrls({ mode: "regex", value: " .* " })).toBe(false);
+    expect(isAllUrls({ mode: "contains", value: ".*" })).toBe(false);
+    expect(isAllUrls({ mode: "contains", value: "" })).toBe(false);
+  });
+
+  it("is the shape the ModHeader converter already emits for no-filter profiles", () => {
+    expect(ALL_URLS_MATCHER).toEqual({ mode: "regex", value: ".*" });
+  });
+
+  it("compiles to a plain match-all urlFilter, not an RE2 evaluation", () => {
+    expect(matcherToDnrCondition(ALL_URLS_MATCHER)).toEqual({ urlFilter: "*" });
+  });
+
+  it("still compiles an ordinary regex through regexFilter", () => {
+    expect(matcherToDnrCondition({ mode: "regex", value: "^https://x\\.dev/" }))
+      .toEqual({ regexFilter: "^https://x\\.dev/" });
+  });
+});
+
+function profile(over: Partial<Profile> = {}): Profile {
+  return {
+    id: "p1",
+    name: "P",
+    enabled: true,
+    matcher: { ...ALL_URLS_MATCHER },
+    rules: [{ id: "r1", enabled: true, op: "set", name: "X-A", value: "1" }],
+    ...over,
+  };
+}
+
+describe("sendsHeadersEverywhere", () => {
+  it("is true for an enabled Set rule inheriting an all-URLs profile matcher", () => {
+    expect(sendsHeadersEverywhere(profile())).toBe(true);
+  });
+
+  it("is true for an Append rule too", () => {
+    expect(sendsHeadersEverywhere(profile({
+      rules: [{ id: "r1", enabled: true, op: "append", name: "Accept", value: "x" }],
+    }))).toBe(true);
+  });
+
+  it("is false when the profile is disabled — nothing is being sent", () => {
+    expect(sendsHeadersEverywhere(profile({ enabled: false }))).toBe(false);
+  });
+
+  it("is false with no rules at all", () => {
+    expect(sendsHeadersEverywhere(profile({ rules: [] }))).toBe(false);
+  });
+
+  it("mirrors compileRules: a disabled or blank-name rule emits nothing", () => {
+    expect(sendsHeadersEverywhere(profile({
+      rules: [{ id: "r1", enabled: false, op: "set", name: "X-A", value: "1" }],
+    }))).toBe(false);
+    expect(sendsHeadersEverywhere(profile({
+      rules: [{ id: "r1", enabled: true, op: "set", name: "   ", value: "1" }],
+    }))).toBe(false);
+  });
+
+  it("is false for Remove-only rules — a Remove sends no data anywhere", () => {
+    expect(sendsHeadersEverywhere(profile({
+      rules: [{ id: "r1", enabled: true, op: "remove", name: "X-A" }],
+    }))).toBe(false);
+  });
+
+  it("is false when every rule overrides to a narrow matcher", () => {
+    expect(sendsHeadersEverywhere(profile({
+      rules: [{
+        id: "r1", enabled: true, op: "set", name: "X-A", value: "1",
+        matcher: { mode: "domain", value: "example.com" },
+      }],
+    }))).toBe(false);
+  });
+
+  it("is true when a rule's own override is itself all-URLs", () => {
+    expect(sendsHeadersEverywhere(profile({
+      matcher: { mode: "domain", value: "example.com" },
+      rules: [{
+        id: "r1", enabled: true, op: "set", name: "X-A", value: "1",
+        matcher: { ...ALL_URLS_MATCHER },
+      }],
+    }))).toBe(true);
+  });
+});
+
+describe("ruleSendsHeadersEverywhere", () => {
+  const set = (over: Partial<HeaderRule> = {}): HeaderRule =>
+    ({ id: "r1", enabled: true, op: "set", name: "X-A", value: "1", ...over });
+
+  it("is true for an enabled Set rule inheriting an all-URLs profile matcher", () => {
+    expect(ruleSendsHeadersEverywhere(set(), { ...ALL_URLS_MATCHER })).toBe(true);
+  });
+
+  it("is true when the rule's own override is all-URLs, whatever the profile matcher is", () => {
+    expect(ruleSendsHeadersEverywhere(
+      set({ matcher: { ...ALL_URLS_MATCHER } }),
+      { mode: "domain", value: "example.com" },
+    )).toBe(true);
+  });
+
+  it("is false when the rule's own override narrows an all-URLs profile", () => {
+    expect(ruleSendsHeadersEverywhere(
+      set({ matcher: { mode: "domain", value: "example.com" } }),
+      { ...ALL_URLS_MATCHER },
+    )).toBe(false);
+  });
+
+  it("mirrors compileRules: disabled, blank-name and Remove rules send nothing", () => {
+    const all = { ...ALL_URLS_MATCHER };
+    expect(ruleSendsHeadersEverywhere(set({ enabled: false }), all)).toBe(false);
+    expect(ruleSendsHeadersEverywhere(set({ name: "   " }), all)).toBe(false);
+    expect(ruleSendsHeadersEverywhere(set({ op: "remove", value: undefined }), all)).toBe(false);
+  });
+
+  it("is true for an Append rule", () => {
+    expect(ruleSendsHeadersEverywhere(set({ op: "append", name: "Accept" }), { ...ALL_URLS_MATCHER })).toBe(true);
+  });
+
+  it("is false with no effective matcher at all — compileRules skips those too", () => {
+    expect(ruleSendsHeadersEverywhere(set(), undefined)).toBe(false);
+  });
+});
+
+describe("ALL_URLS_MATCHER", () => {
+  it("is frozen, so a caller that forgets to spread can't corrupt the default", () => {
+    expect(Object.isFrozen(ALL_URLS_MATCHER)).toBe(true);
+    expect(() => {
+      (ALL_URLS_MATCHER as Matcher).value = "boom";
+    }).toThrow();
+    expect(ALL_URLS_MATCHER.value).toBe(".*");
   });
 });

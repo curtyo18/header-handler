@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { encodeShare, decodeShare } from "./share";
 import type { Profile, Config } from "../types";
+import { isAllUrls } from "./matcher";
 
 const profile: Profile = {
   id: "abc", name: "Auth", enabled: true,
@@ -89,4 +90,17 @@ describe("decodeShare schema validation", () => {
     const out = decodeShare(forge("p", { name: "X", enabled: true, matcher: goodMatcher, rules: [goodRule] }));
     expect(out.kind).toBe("p");
   });
+});
+
+it("round-trips an all-URLs profile unchanged (ADR-0008 — no new MatchMode on the wire)", () => {
+  const profile: Profile = {
+    id: "p1", name: "Everywhere", enabled: true,
+    matcher: { mode: "regex", value: ".*" },
+    rules: [{ id: "r1", enabled: true, op: "set", name: "X-A", value: "1" }],
+  };
+  const decoded = decodeShare(encodeShare({ kind: "p", profile }));
+  expect(decoded.kind).toBe("p");
+  if (decoded.kind !== "p") throw new Error("unreachable");
+  expect(decoded.profile.matcher).toEqual({ mode: "regex", value: ".*" });
+  expect(isAllUrls(decoded.profile.matcher)).toBe(true);
 });

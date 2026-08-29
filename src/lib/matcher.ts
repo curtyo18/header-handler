@@ -1,6 +1,20 @@
-import type { Matcher, MatchMode } from "../types";
+import type { HeaderRule, Matcher, MatchMode, Profile } from "../types";
 
 export const MATCH_MODES: MatchMode[] = ["contains", "exact", "starts", "ends", "domain", "regex"];
+
+// All-URLs is an encoding, not a seventh mode: it is the Custom regex mode with
+// the exact value ".*" — the same shape the ModHeader converter has emitted for
+// a no-filter profile since it shipped (modheader.ts). A new MatchMode would be
+// rejected by isMatchMode on an older client reading the same synced config
+// (ADR-0006) or a pasted share string (ADR-0002), silently matching nothing.
+// See ADR-0008.
+// Frozen: every call site spreads a copy ({ ...ALL_URLS_MATCHER }); a future one
+// that forgets should fail loudly rather than mutate the global default.
+export const ALL_URLS_MATCHER: Readonly<Matcher> = Object.freeze({ mode: "regex", value: ".*" });
+
+export function isAllUrls(m: Matcher): boolean {
+  return m.mode === "regex" && m.value === ".*";
+}
 
 // Runtime guard for values that reach us untyped (decoded share strings): an
 // unrecognized mode must never fall through to a filter-less DNR condition,
@@ -28,6 +42,10 @@ export function normalizeDomain(v: string): string {
 }
 
 export function matcherToDnrCondition(m: Matcher): chrome.declarativeNetRequest.RuleCondition {
+  // Every newly created profile is on this matcher, so the default path must be
+  // a plain filter match rather than an RE2 evaluation on every request. DNR
+  // treats a urlFilter of "*" as match-all. (ADR-0008)
+  if (isAllUrls(m)) return { urlFilter: "*" };
   switch (m.mode) {
     case "contains": return { urlFilter: escapeUrlFilter(m.value) };
     case "starts":   return { urlFilter: "|" + escapeUrlFilter(m.value) };
@@ -66,4 +84,27 @@ export function evaluateMatcher(m: Matcher, url: string): boolean {
     }
     default: return false; // unknown mode never matches (mirrors compileRules skipping it)
   }
+}
+
+// Does this one rule send headers to every URL? The rule-level conditions mirror
+// compileRules — a disabled or blank-name rule emits nothing, a Remove sends no
+// data anywhere, and a missing matcher is skipped there too (compile.ts:
+// `if (!matcher || ...)`). A rule carrying its own override doesn't use the
+// profile matcher, so the effective matcher is what's tested.
+// compileRules also gates on profile.enabled, which this helper cannot see: that
+// gate is the caller's responsibility — sendsHeadersEverywhere below applies it,
+// and HeaderRow ANDs in its own profileEnabled prop.
+// Single definition, used both for the profile-level nudge below and for the
+// per-rule indicator on the rule card.
+export function ruleSendsHeadersEverywhere(r: HeaderRule, profileMatcher: Matcher | undefined): boolean {
+  const m = r.matcher ?? profileMatcher;
+  return r.enabled && r.op !== "remove" && r.name.trim() !== "" && !!m && isAllUrls(m);
+}
+
+// Drives the escalated form of the all-URLs nudge in the options editor.
+// Deliberately ignores the master switch: that's a temporary global pause, and
+// the profile is still misconfigured underneath it.
+export function sendsHeadersEverywhere(p: Profile): boolean {
+  if (!p.enabled) return false;
+  return p.rules.some((r) => ruleSendsHeadersEverywhere(r, p.matcher));
 }

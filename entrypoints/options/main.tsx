@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import { configStore, dnrErrorStore, CONFIG_SOFT_CAP_BYTES, configStorageBytes, type DnrError } from "../../src/lib/storage";
 import type { Config, HeaderRule, Profile } from "../../src/types";
 import { encodeShare } from "../../src/lib/share";
+import { ALL_URLS_MATCHER, sendsHeadersEverywhere } from "../../src/lib/matcher";
 import { MatcherControl } from "./MatcherControl";
 import { HeaderRow } from "./HeaderRow";
 import { ImportModal } from "./ImportModal";
@@ -23,8 +24,12 @@ function AppIcon() {
   );
 }
 
+// A new profile matches every URL so it works with zero configuration — an empty
+// matcher value compiles to nothing, which made a fresh install look broken (#38).
+// The nudge under the matcher control is the counterweight. Spread, don't share
+// the module-level constant: profile matchers are mutated by the editor.
 function newProfile(): Profile {
-  return { id: crypto.randomUUID(), name: "New profile", enabled: true, matcher: { mode: "contains", value: "" }, rules: [] };
+  return { id: crypto.randomUUID(), name: "New profile", enabled: true, matcher: { ...ALL_URLS_MATCHER }, rules: [] };
 }
 
 function newRule(): HeaderRule {
@@ -300,7 +305,16 @@ export function App() {
 
               <div>
                 <label class="label-sm">URL MATCHER</label>
-                <MatcherControl matcher={selected.matcher} onChange={(matcher) => updateSelected({ matcher })} />
+                {/* Keyed by profile: MatcherControl keeps internal valueOpen
+                    state, and without a remount picking Custom regex on one
+                    profile leaves the value field open on the next all-URLs
+                    profile clicked. */}
+                <MatcherControl
+                  key={selected.id}
+                  matcher={selected.matcher}
+                  onChange={(matcher) => updateSelected({ matcher })}
+                  escalated={sendsHeadersEverywhere(selected)}
+                />
               </div>
 
               <div>
@@ -308,6 +322,7 @@ export function App() {
                 <div class="rules-col-header">
                   <span class="col-check" />
                   <span class="col-op">Op</span>
+                  <span class="col-help" />
                   <span class="col-name">Header</span>
                   <span class="col-value">Value</span>
                   <span class="col-actions" />
@@ -319,6 +334,8 @@ export function App() {
                     onChange={(next) => updateRule(r.id, next)}
                     onDelete={() => deleteRule(r.id)}
                     onEditing={markSaving}
+                    profileMatcher={selected.matcher}
+                    profileEnabled={selected.enabled}
                   />
                 ))}
                 <button type="button" class="btn-dashed btn-dashed-block" onClick={addRule}>
