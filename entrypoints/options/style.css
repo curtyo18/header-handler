@@ -495,9 +495,8 @@ textarea {
 }
 
 .col-name {
-  flex: 1 1 132px;
-  min-width: 132px;
-  max-width: 320px;
+  flex: none;
+  width: var(--name-width, 132px);
 }
 
 .col-value {
@@ -526,11 +525,15 @@ textarea {
   margin: 0 10px 8px;
 }
 
+/* Scrolls rather than clips: with no cap on the name field a long header name
+   can push the row wider than .rule-card, whose overflow: hidden would
+   otherwise make the value field and the row buttons unreachable. */
 .rule-row {
   display: flex;
   align-items: flex-start;
   gap: 8px;
   padding: 9px 10px;
+  overflow-x: auto;
 }
 
 .checkbox {
@@ -554,22 +557,25 @@ textarea {
 }
 
 /* Long header names (Access-Control-Allow-Credentials, X-Forwarded-Proto) were
-   truncated in a fixed 132px box with no way to widen it (#37). Flex like
-   .value-input next to it, with 132px as the floor so narrow widths look
-   exactly as before, and a cap so the name can't crowd out the value field. */
+   truncated in a fixed 132px box (#37), and flexing it only moved the clipping
+   point. The width is now measured from the longest name in the profile and
+   handed down as --name-width by the container in main.tsx: one value for the
+   whole column, so the fields stay flush under the .col-name heading instead of
+   going ragged per row, and no cap, so the name is always fully visible. The
+   132px fallback is the shipped width, used before the container sets the var. */
 .header-name-input {
-  flex: 1 1 132px;
-  min-width: 132px;
-  max-width: 320px;
+  flex: none;
+  width: var(--name-width, 132px);
   height: 28px;
   padding: 0 9px;
   font-size: 11.5px;
 }
 
-/* Given three shares to .header-name-input's one: the value is the field users
-   edit most, and an even split squeezed it to ~140px on a 640px row. */
+/* Takes whatever the (uncapped) name field leaves; min-width keeps it usable
+   rather than letting a very long header name shrink it to nothing. */
 .value-input {
   flex: 3 1 0;
+  min-width: 96px;
   min-height: 28px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -665,6 +671,7 @@ textarea.value-input {
 /* JSON value editor */
 .json-editor {
   flex: 3 1 0;
+  min-width: 96px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 7px;

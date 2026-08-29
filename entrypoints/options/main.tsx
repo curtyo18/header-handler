@@ -36,6 +36,54 @@ function newRule(): HeaderRule {
   return { id: crypto.randomUUID(), enabled: true, op: "set", name: "", value: "" };
 }
 
+// The header name field sizes itself to the longest name in the profile so a
+// long one is never truncated (#37 follow-up). Three decisions worth recording:
+//   - One width for the whole column, not one per row: `field-sizing: content`
+//     sizes each input independently, which leaves the fields ragged and out
+//     from under the "Header" heading. The widest name wins for everyone.
+//   - No cap: the name is always fully readable and the value editor gives up
+//     the room (it keeps a min-width, and .rule-row scrolls if the card runs out).
+//   - Measured px, not `ch`: 1ch resolves against each element's own font, and
+//     the heading (.col-name, 9.5px uppercase sans) is not the field
+//     (.header-name-input, 11.5px mono), so a shared ch width would drift
+//     between them. One px number can't.
+const NAME_FIELD_FONT = '11.5px ui-monospace, "SF Mono", Menlo, monospace';
+// .header-name-input's padding (0 9px) plus its 1px borders, under the global
+// box-sizing: border-box.
+const NAME_FIELD_CHROME_PX = 20;
+// The width the field shipped at — short and empty names must still look like this.
+const NAME_FIELD_FLOOR_PX = 132;
+// jsdom has no real text metrics, so tests land here. 7px is close enough to the
+// real advance and makes the floor come out at exactly 132px: (132 - 20) / 7 = 16.
+const FALLBACK_CHAR_PX = 7;
+
+let measuredCharPx: number | null = null;
+
+// Measured once: the advance is a constant of the font, and canvas text metrics
+// are far too expensive to touch per render, let alone per row.
+function monoCharWidthPx(): number {
+  if (measuredCharPx !== null) return measuredCharPx;
+  let measured = 0;
+  try {
+    const ctx = document.createElement("canvas").getContext("2d");
+    if (ctx && typeof ctx.measureText === "function") {
+      ctx.font = NAME_FIELD_FONT;
+      measured = ctx.measureText("0").width;
+    }
+  } catch {
+    // No canvas at all (jsdom) — fall through to the constant.
+  }
+  measuredCharPx = measured > 0 ? measured : FALLBACK_CHAR_PX;
+  return measuredCharPx;
+}
+
+function nameFieldWidthPx(rules: HeaderRule[]): number {
+  const advance = monoCharWidthPx();
+  let chars = Math.ceil((NAME_FIELD_FLOOR_PX - NAME_FIELD_CHROME_PX) / advance);
+  for (const r of rules) chars = Math.max(chars, r.name.length);
+  return Math.ceil(chars * advance) + NAME_FIELD_CHROME_PX;
+}
+
 function saveErrorMessage(e: unknown): string {
   const msg = e instanceof Error ? e.message : String(e);
   if (/quota/i.test(msg)) {
@@ -319,25 +367,29 @@ export function App() {
 
               <div>
                 <label class="label-sm">HEADER RULES</label>
-                <div class="rules-col-header">
-                  <span class="col-check" />
-                  <span class="col-op">Op</span>
-                  <span class="col-help" />
-                  <span class="col-name">Header</span>
-                  <span class="col-value">Value</span>
-                  <span class="col-actions" />
+                {/* Heading and fields both read --name-width off this one
+                    container, so the column can't drift apart. */}
+                <div class="rules-body" style={{ "--name-width": `${nameFieldWidthPx(selected.rules)}px` }}>
+                  <div class="rules-col-header">
+                    <span class="col-check" />
+                    <span class="col-op">Op</span>
+                    <span class="col-help" />
+                    <span class="col-name">Header</span>
+                    <span class="col-value">Value</span>
+                    <span class="col-actions" />
+                  </div>
+                  {selected.rules.map((r) => (
+                    <HeaderRow
+                      rule={r}
+                      key={r.id}
+                      onChange={(next) => updateRule(r.id, next)}
+                      onDelete={() => deleteRule(r.id)}
+                      onEditing={markSaving}
+                      profileMatcher={selected.matcher}
+                      profileEnabled={selected.enabled}
+                    />
+                  ))}
                 </div>
-                {selected.rules.map((r) => (
-                  <HeaderRow
-                    rule={r}
-                    key={r.id}
-                    onChange={(next) => updateRule(r.id, next)}
-                    onDelete={() => deleteRule(r.id)}
-                    onEditing={markSaving}
-                    profileMatcher={selected.matcher}
-                    profileEnabled={selected.enabled}
-                  />
-                ))}
                 <button type="button" class="btn-dashed btn-dashed-block" onClick={addRule}>
                   ＋ Add header
                 </button>
