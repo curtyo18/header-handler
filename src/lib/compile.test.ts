@@ -149,3 +149,33 @@ describe("diffRules", () => {
     expect(removeRuleIds).toEqual([]);
   });
 });
+
+describe("all-URLs matcher (#38)", () => {
+  it("compiles a live rule for a profile on the all-URLs matcher", () => {
+    const rules = compileRules({
+      version: 1,
+      masterEnabled: true,
+      profiles: [{
+        id: "p1", name: "New profile", enabled: true,
+        matcher: { mode: "regex", value: ".*" },
+        rules: [{ id: "r1", enabled: true, op: "set", name: "X-A", value: "1" }],
+      }],
+    });
+    expect(rules).toHaveLength(1);
+    expect(rules[0].condition.urlFilter).toBe("*");
+    expect(rules[0].condition.regexFilter).toBeUndefined();
+  });
+
+  it("still skips a profile whose matcher value is empty — no silent activation on update", () => {
+    const rules = compileRules({
+      version: 1,
+      masterEnabled: true,
+      profiles: [{
+        id: "p1", name: "Old profile", enabled: true,
+        matcher: { mode: "contains", value: "" },
+        rules: [{ id: "r1", enabled: true, op: "set", name: "X-A", value: "1" }],
+      }],
+    });
+    expect(rules).toHaveLength(0);
+  });
+});

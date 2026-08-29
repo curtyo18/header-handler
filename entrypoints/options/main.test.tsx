@@ -59,3 +59,18 @@ describe("Options save-failure surfacing (#5)", () => {
     expect(screen.queryByText("Saved")).toBeNull();
   });
 });
+
+describe("New profile default matcher (#38)", () => {
+  it("creates a profile scoped to All URLs and nudges the user to scope it", async () => {
+    render(<App />);
+    await screen.findByDisplayValue("Auth");
+
+    fireEvent.click(screen.getByText("＋ New profile"));
+
+    const modeSelect = await screen.findByDisplayValue("All URLs");
+    expect(modeSelect).toBeTruthy();
+    expect(screen.getByText(/Applies to every URL/i)).toBeTruthy();
+    // No rules yet, so the calm state — not the escalated warning.
+    expect(screen.queryByText(/sent to every URL/i)).toBeNull();
+  });
+});

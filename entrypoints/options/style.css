@@ -16,6 +16,7 @@
   --accent-border: #33465f;
   --success: #5fd08a;
   --danger: #f2777a;
+  --warn: #e0b96a;
 }
 
 * {
@@ -424,6 +425,12 @@ textarea {
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
 }
 
+/* Amber, matching .size-banner — a scope warning, not a hard error like
+   .helper-danger (which means "this rule cannot compile"). */
+.helper-warn {
+  color: var(--warn);
+}
+
 .dnr-banner {
   display: flex;
   align-items: flex-start;
@@ -504,7 +511,8 @@ textarea {
   border-color: var(--danger);
 }
 
-.rule-blocked-note {
+.rule-blocked-note,
+.rule-scope-note {
   margin: 0 10px 8px;
 }
 
