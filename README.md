@@ -29,7 +29,7 @@ A **profile** bundles a default **matcher** (which requests it applies to) and a
 
 ### Matchers
 
-A matcher decides which requests a profile or rule applies to. It's either **All URLs** — the default for a new profile, matching every request — or one of six scoped modes: Contains, Exact, Starts with, Ends with, Domain, or Custom regex. While a profile is on All URLs the editor shows a reminder to scope it, since its headers go to every site you visit.
+A matcher decides which requests a profile or rule applies to. It's either **All URLs** — the default for a new profile, matching every request — or one of six scoped modes: Contains, Exact, Starts with, Ends with, Domain, or Custom regex. Custom regex takes a bare pattern — no `/…/` delimiters and no flags — and the editor warns when a value looks like a JavaScript regex literal. While a profile is on All URLs the editor shows a reminder to scope it, since its headers go to every site you visit.
 
 ### Live log
 

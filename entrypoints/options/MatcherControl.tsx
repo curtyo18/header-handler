@@ -42,6 +42,51 @@ export function regexError(mode: MatchMode, value: string): string | null {
   }
 }
 
+// This field takes a bare pattern, not a JS regex literal. The literal form is
+// the one mistake that survives both checks above: "/api/g" is the perfectly
+// valid pattern \/api\/g, so regexError() and isRegexSupported() both pass it and
+// the rule quietly matches the literal text "/api/g" instead of "/api" (#41).
+const REGEX_LITERAL = /^\/(.+)\/([dgimsuvy]*)$/;
+
+// Trailing backslashes in the body decide whether the closing "/" was a
+// delimiter or an escaped slash: "/log\/" is the bare pattern for URLs
+// containing "log/", not a literal wrapping the body "log\".
+function closingSlashIsEscaped(body: string): boolean {
+  const run = /\\*$/.exec(body)![0].length;
+  return run % 2 === 1;
+}
+
+// JS rejects a repeated flag, so a run like the "gg" of "/api/gg" is path text
+// that happens to be spelled in flag letters, not a flags clause — which makes
+// the whole value an ordinary bare pattern with nothing to warn about.
+function hasRepeatedFlag(flags: string): boolean {
+  return new Set(flags).size !== flags.length;
+}
+
+export function regexLiteralWarning(
+  mode: MatchMode,
+  value: string,
+): { suggestion: string; hasFlags: boolean } | null {
+  // Trimmed because the literal form usually arrives pasted, and " /api/g " is
+  // the same mistake with the same fix.
+  const trimmed = mode === "regex" ? value.trim() : "";
+  if (trimmed === "") return null;
+  const m = REGEX_LITERAL.exec(trimmed);
+  if (!m || closingSlashIsEscaped(m[1]) || hasRepeatedFlag(m[2])) return null;
+  // Deliberately one message, offered rather than asserted, whether or not a
+  // flags clause is present: "/users/id" is a plausible path pattern that parses
+  // as body "users" plus flags "id", and no test tells it apart from "/api/gi".
+  // Telling that user they made a mistake would be worse than the silent
+  // mismatch #41 is about, so the copy only points out what the outer slashes
+  // do — true either way — and lets them decide. Flags are dropped from the
+  // suggestion because DNR's regexFilter has no flags field to carry them.
+  // hasFlags is the only positive evidence of a literal, so it gates the field
+  // tint: "/api/" is the ordinary way to write a path-segment pattern and every
+  // one of those is delimiter-shaped, so an amber border there would sit on
+  // correct input permanently. The helper line still offers the reading.
+  return { suggestion: m[1], hasFlags: m[2] !== "" };
+}
+
 // A regex can be valid JavaScript yet unsupported by DNR's RE2 engine (lookahead,
 // backreferences) — those pass regexError() but make updateDynamicRules reject the
 // whole batch. Ask Chrome directly so the editor catches them before they ship (#4).
@@ -96,6 +141,9 @@ export function MatcherControl({
   const jsError = regexError(matcher.mode, matcher.value);
   const re2Error = useRe2Error(matcher.mode, matcher.value, jsError !== null);
   const error = jsError ?? re2Error;
+  // Only when the pattern compiles: a broken regex has a real error to show, and
+  // stacking a shape hint on top of it would bury the thing that blocks the rule.
+  const warning = error ? null : regexLiteralWarning(matcher.mode, matcher.value);
 
   function selectMode(next: string) {
     if (next === ALL_URLS_VALUE) {
@@ -131,7 +179,7 @@ export function MatcherControl({
         </select>
         {(!allUrls || valueOpen) && (
           <input
-            class={`input input-mono matcher-value ${error ? "input-danger" : ""}`}
+            class={`input input-mono matcher-value ${error ? "input-danger" : warning?.hasFlags ? "input-warn" : ""}`}
             type="text"
             value={matcher.value}
             onInput={(e) => onChange({ ...matcher, value: (e.target as HTMLInputElement).value })}
@@ -147,6 +195,11 @@ export function MatcherControl({
         </div>
       ) : error ? (
         <div class="helper helper-danger">⚠ Invalid regular expression: {error}</div>
+      ) : warning ? (
+        <div class="helper helper-warn" role="status">
+          ⚠ Leading and trailing / are matched literally. If you meant the pattern between them,
+          enter <code class="helper-mono">{warning.suggestion}</code>
+        </div>
       ) : (
         <div class="helper helper-mono">{HINTS[matcher.mode]}</div>
       )}
