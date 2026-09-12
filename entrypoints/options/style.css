@@ -330,6 +330,12 @@ textarea {
   border-color: var(--danger) !important;
 }
 
+/* Amber, pairing with .helper-warn: the value still compiles and still saves,
+   it just probably doesn't mean what the user typed. */
+.input-warn {
+  border-color: var(--warn) !important;
+}
+
 .enabled-stack {
   display: flex;
   flex-direction: column;

@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { render, cleanup, fireEvent } from "@testing-library/preact";
 import type { Matcher } from "../../src/types";
-import { MatcherControl } from "./MatcherControl";
+import { MatcherControl, regexLiteralWarning } from "./MatcherControl";
 
 afterEach(cleanup);
 
@@ -120,5 +120,110 @@ describe("MatcherControl all-URLs value field", () => {
     fireEvent.change(c.mode(), { target: { value: "all" } });
     c.sync();
     expect(c.value()).toBeNull();
+  });
+});
+
+describe("regexLiteralWarning", () => {
+  const suggestionFor = (v: string) => regexLiteralWarning("regex", v)?.suggestion ?? null;
+
+  it("ignores every mode but Custom regex", () => {
+    expect(regexLiteralWarning("contains", "/api/g")).toBeNull();
+    expect(regexLiteralWarning("domain", "/api/g")).toBeNull();
+  });
+
+  it("offers the pattern inside the delimiters, dropping any flags clause", () => {
+    // The repro from #41: valid JS and valid RE2, so nothing else catches it.
+    expect(suggestionFor("/api/g")).toBe("api");
+    expect(suggestionFor("/^https:\\/\\/api\\./i")).toBe("^https:\\/\\/api\\.");
+    expect(suggestionFor("/^https:\\/\\/api\\./")).toBe("^https:\\/\\/api\\.");
+  });
+
+  it("sees through surrounding whitespace, since the literal form arrives pasted", () => {
+    expect(suggestionFor("  /api/g  ")).toBe("api");
+  });
+
+  it("leaves an ordinary bare pattern alone", () => {
+    expect(suggestionFor("^https://.*\\.dev/")).toBeNull();
+    expect(suggestionFor("/api/users")).toBeNull();
+    expect(suggestionFor(".*")).toBeNull();
+    expect(suggestionFor("")).toBeNull();
+    expect(suggestionFor("   ")).toBeNull();
+  });
+
+  it("does not read a repeated flag letter as a flags clause", () => {
+    // "gg" is not a legal JS flags string, so "/api/gg" is just a path pattern.
+    expect(suggestionFor("/api/gg")).toBeNull();
+  });
+
+  it("does not read an escaped closing slash as a delimiter", () => {
+    // "/log\/" is the bare pattern for URLs containing "/log/", not a literal.
+    expect(suggestionFor("/log\\/")).toBeNull();
+    // ...but an escaped backslash before the closing slash is a real delimiter.
+    expect(suggestionFor("/log\\\\/")).toBe("log\\\\");
+  });
+
+  it("needs a non-empty body, so a lone or doubled slash is not a literal", () => {
+    expect(suggestionFor("/")).toBeNull();
+    expect(suggestionFor("//")).toBeNull();
+  });
+
+  it("still warns on a path pattern whose last segment is spelled in flag letters", () => {
+    // "/users/id" parses as body "users" + flags "id" and nothing distinguishes
+    // it from "/api/gi". Pinned deliberately: the copy offers a reading rather
+    // than asserting a mistake, so a false positive here costs the user a
+    // glance, not a wrong correction.
+    expect(suggestionFor("/users/id")).toBe("users");
+    expect(suggestionFor("/api/v")).toBe("api");
+  });
+
+  it("reports a flags clause only when one is present, since it gates the field tint", () => {
+    expect(regexLiteralWarning("regex", "/api/g")!.hasFlags).toBe(true);
+    // "/api/" is the ordinary bare pattern for a path segment — delimiter-shaped
+    // with no evidence behind it, so it gets the helper line and no tint.
+    expect(regexLiteralWarning("regex", "/api/")!.hasFlags).toBe(false);
+    expect(suggestionFor("/api/")).toBe("api");
+  });
+});
+
+describe("MatcherControl regex literal warning", () => {
+  it("warns in the helper and tints the field without blocking the value", () => {
+    const c = mount({ mode: "regex", value: "/api/g" });
+    const helper = c.container.querySelector(".helper")!;
+    expect(helper.textContent).toMatch(/Leading and trailing \/ are matched literally/);
+    expect(helper.querySelector("code")!.textContent).toBe("api");
+    expect(helper.classList.contains("helper-warn")).toBe(true);
+    expect(helper.classList.contains("helper-danger")).toBe(false);
+    expect(helper.getAttribute("role")).toBe("status");
+    expect(c.value()!.classList.contains("input-warn")).toBe(true);
+    expect(c.value()!.classList.contains("input-danger")).toBe(false);
+    // The value is left exactly as typed — this warns, it does not strip (#41).
+    expect(c.matcher).toEqual({ mode: "regex", value: "/api/g" });
+  });
+
+  it("leaves the field untinted for a delimiter-only value, which is often correct", () => {
+    const c = mount({ mode: "regex", value: "/api/" });
+    const helper = c.container.querySelector(".helper")!;
+    expect(helper.classList.contains("helper-warn")).toBe(true);
+    expect(c.value()!.classList.contains("input-warn")).toBe(false);
+  });
+
+  it("shows the normal hint once the delimiters are gone", () => {
+    const c = mount({ mode: "regex", value: "/api/g" });
+    fireEvent.input(c.value()!, { target: { value: "api" } });
+    c.sync();
+    const helper = c.container.querySelector(".helper")!;
+    expect(helper.classList.contains("helper-warn")).toBe(false);
+    expect(helper.textContent).toMatch(/e\.g\./);
+  });
+
+  it("lets a hard regex error win over the shape warning", () => {
+    // "/(/" is both unparseable and literal-shaped; the error is what blocks the
+    // rule, so it must not be buried under a hint about delimiters.
+    const c = mount({ mode: "regex", value: "/(/" });
+    const helper = c.container.querySelector(".helper")!;
+    expect(helper.classList.contains("helper-danger")).toBe(true);
+    expect(helper.textContent).toMatch(/Invalid regular expression/);
+    expect(c.value()!.classList.contains("input-danger")).toBe(true);
+    expect(c.value()!.classList.contains("input-warn")).toBe(false);
   });
 });

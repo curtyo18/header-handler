@@ -34,6 +34,11 @@ describe("ruleHasBlockingError", () => {
   it("ignores the allowlist check while the header name is still empty", () => {
     expect(ruleHasBlockingError({ ...baseRule(), op: "append", name: "", value: "x" })).toBe(false);
   });
+  it("is false for a regex-literal override matcher, which only warns (#41)", () => {
+    // "/api/g" compiles fine — it just matches the wrong thing. Routing that
+    // through the blocking path would stop the rule shipping over a hint.
+    expect(ruleHasBlockingError({ ...baseRule(), matcher: { mode: "regex", value: "/api/g" } })).toBe(false);
+  });
 });
 
 describe("HeaderRow blocked state", () => {
